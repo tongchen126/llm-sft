@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from openai import OpenAI
 import base64
+import tqdm
 
 def image_to_base64(image_path):
        with open(image_path, "rb") as f:
@@ -123,7 +124,7 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
        img_out_dir.mkdir(parents=True, exist_ok=True)
 
        records = []
-       for i, ex in enumerate(ds):
+       for i, ex in tqdm(enumerate(ds)):
        # ex likely has 'conversations' (list of dict {from, value, lang}) and 'images' (list)
               conv = ex.get(message_name, [])
               messages = []
