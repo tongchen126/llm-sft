@@ -67,17 +67,7 @@ def convert_to_cot(messages, image_paths, model="gpt-4o"):
        Rewrite the assistant's answer to include explicit reasoning steps. Use the following format: 
        <reasoning> [Step by step reasoning...] </reasoning> <final>[Concise final answer]</final>
        """
-       result_system_prompt = """
-       You are a helpful reasoning assistant. 
-       Always think step by step before answering. 
-       Format your response as:
-       <reasoning>
-       [step by step reasoning...]
-       </reasoning>
-       <final>
-       [concise final answer only]
-       </final>
-       """
+       result_system_prompt = """You are a helpful reasoning assistant. Always think step by step before answering. Format your response as: <reasoning> [step by step reasoning...] </reasoning> <final> [concise final answer only] </final> """
        user_msg = get_role_message(messages,"user")[0]["content"]
        assistant_msg = get_role_message(messages,"assistant")[0]["content"]
 
@@ -161,4 +151,4 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
 
        print("wrote", out_file)
        
-conv_dataset(to_cot=True)
+conv_dataset(out_path="data/pokemon_cot", to_cot=True)
