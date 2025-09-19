@@ -3,8 +3,6 @@ from datasets import load_dataset
 import json
 from pathlib import Path
 
-
-
 def conv_role(from_str):
     # dataset uses e.g. "human" and "gpt" in conversations -> map to sharegpt roles
        m = from_str.lower()
