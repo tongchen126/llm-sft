@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from openai import OpenAI
 import base64
-import tqdm
+from tqdm import tqdm
 
 def image_to_base64(image_path):
        with open(image_path, "rb") as f:
