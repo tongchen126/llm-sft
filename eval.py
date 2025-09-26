@@ -151,7 +151,7 @@ class QwenVLEvaluator:
             List of conversation dictionaries
         """
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
-
+        system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
         with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
             dataset = json.load(f)
         
@@ -161,7 +161,7 @@ class QwenVLEvaluator:
             gt = self.get_gt_qwen(item, TAG.ASSISTANT_TAG, TAG)
             original_item = transform_func(item, TAG, image_base_path, system_message = None)
 
-            processed_item = transform_func(item, TAG, image_base_path, system_message = None, skip_role = [TAG.ASSISTANT_TAG])
+            processed_item = transform_func(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
             processed_chat = self.processor.apply_chat_template(processed_item, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
 
             processed_dataset['original'].append(original_item)
@@ -194,7 +194,7 @@ class QwenVLEvaluator:
                 top_p=0.8,
                 pad_token_id=self.tokenizer.eos_token_id,
             )
-        
+        # TODO: Compare the above code to "model.generate(**processed_chat.to(model.device), max_new_tokens=128)"
         # Decode response
         prompt = self.tokenizer.decode(outputs[0][:input_length], skip_special_tokens=True)
         response = self.tokenizer.decode(outputs[0][input_length:], skip_special_tokens=True)
@@ -226,8 +226,13 @@ class QwenVLEvaluator:
                 # Generate prediction
                 prompt, predicted_response = self.generate_response(processed)
                 
-                results.append(predicted_response)
-                print(f"Prompt {prompt}\n Response {predicted_response}\n Ground Truth {ground_truth}\n")
+                result = {
+                    'prompt': prompt,
+                    'ground_truth': ground_truth,
+                    'predicted': predicted_response,
+                }
+                results.append(result)
+                print(f"Prompt:\t{prompt}\nResponse:\t{predicted_response}\n\nGround Truth:\t{ground_truth}\n")
             except Exception as e:
                 print(f"Error processing sample {idx}: {str(e)}")
                 continue
@@ -249,26 +254,8 @@ class QwenVLEvaluator:
         return {"results": results, "statistics": stats}
     
     def calculate_metrics(self, results: List[Dict]) -> Dict:
-        """
-        Calculate evaluation metrics (you can extend this with more sophisticated metrics)
         
-        Args:
-            results: List of evaluation results
-            
-        Returns:
-            Dictionary of metrics
-        """
-        # Basic metrics
-        total_samples = len(results)
-        non_empty_predictions = len([r for r in results if r["predicted"].strip()])
-        
-        metrics = {
-            "response_rate": non_empty_predictions / total_samples if total_samples > 0 else 0,
-            "average_response_length": np.mean([len(r["predicted"]) for r in results if r["predicted"]]),
-            "total_samples": total_samples
-        }
-        
-        return metrics
+        return 0
 
 def main(model_path, dataset_path):
     parser = argparse.ArgumentParser(description="Evaluate Qwen-VL model on ShareGPT dataset")
