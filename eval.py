@@ -157,7 +157,7 @@ class QwenVLEvaluator:
         
         # Process dataset to handle image paths
         processed_dataset = {'processed':[],'original': [], 'gt': []}
-        for item in dataset[:10]:
+        for item in dataset:
             gt = self.get_gt_qwen(item, TAG.ASSISTANT_TAG, TAG)
             original_item = transform_func(item, TAG, image_base_path, system_message = None)
 
@@ -294,9 +294,9 @@ def main(model_path, dataset_path):
     print("="*50)
     print(f"Total samples processed: {evaluation_results['statistics']['total_samples']}")
     print(f"Successful generations: {evaluation_results['statistics']['successful_generations']}")
-    print(f"Response rate: {metrics['response_rate']:.2%}")
     print(f"Average prediction length: {evaluation_results['statistics']['average_prediction_length']:.1f} chars")
     print(f"Average ground truth length: {evaluation_results['statistics']['average_ground_truth_length']:.1f} chars")
+    # print(f"Response rate: {metrics['response_rate']:.2%}")
     print(f"Results saved to: {args.output_file}")
 
 if __name__ == "__main__":
