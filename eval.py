@@ -10,7 +10,7 @@ from typing import List, Dict, Any
 import argparse
 from pathlib import Path
 from datasets import Dataset
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 
 class TAGS:
     def __init__(self,IMAGE_TAG, MESSAGE_TAG, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
@@ -263,8 +263,8 @@ def main(model_path, dataset_path):
     parser.add_argument("--dataset_path", type=str, default=dataset_path, help="Path to ShareGPT JSON dataset")
     parser.add_argument("--image_base_path", type=str, default=dataset_path, help="Base path for images")
     parser.add_argument("--output_file", type=str, default="evaluation_results.json", help="Output file for results")
-    parser.add_argument("--device", type=str, default="auto", help="Device to use (auto/cuda/cpu)")
-    parser.add_argument("--max_samples", type=int, help="Maximum number of samples to evaluate")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device to use (auto/cuda/cpu)")
+    parser.add_argument("--max_samples", type=int, default=100, help="Maximum number of samples to evaluate")
     
     args = parser.parse_args()
     
@@ -276,7 +276,7 @@ def main(model_path, dataset_path):
     
     # Limit samples if specified
     if args.max_samples:
-        dataset = dataset[:args.max_samples]
+        dataset = Subset(dataset, range(args.max_samples))
     
     # Evaluate
     evaluation_results = evaluator.evaluate_dataset(
@@ -300,4 +300,4 @@ def main(model_path, dataset_path):
     print(f"Results saved to: {args.output_file}")
 
 if __name__ == "__main__":
-    main('/workspace/user_code/workspace/LLaMA-Factory/saved/qwen2_5vl-7b/lora/sft-0/checkpoint-940', '/workspace/user_code/workspace/llm-sft/data/pokemon')
+    main('/workspace/user_code/workspace/LLaMA-Factory/saved/qwen2_5vl-7b/lora/sft-1-cot/checkpoint-470', '/workspace/user_code/workspace/llm-sft/data/pokemon_cot')
