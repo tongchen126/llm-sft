@@ -37,13 +37,6 @@ class LLMDataset(Dataset):
 
 class BaseEvaluator:
     def __init__(self, base_model, lora_path = None, device: str = "auto", base_model_class = AutoModelForImageTextToText):
-        """
-        Initialize the Qwen-VL model evaluator
-        
-        Args:
-            model_path: Path to your fine-tuned model
-            device: Device to load model on ("auto", "cuda", "cpu")
-        """
         self.device = device
         self.model_path = base_model
         self.lora_path = lora_path
@@ -69,18 +62,7 @@ class BaseEvaluator:
 
         print("Model loaded successfully!")
 
-    def transform_conversation(self, input_data, TAG, base_url, system_message=None, skip_role = []):
-        """
-        Transform conversation data from input format to desired output format.
-        
-        Args:
-            input_data (dict): Input conversation data
-            base_url (str): Base URL to prepend to image paths
-            system_message (str): Optional system message to add at the beginning
-        
-        Returns:
-            list: Transformed conversation in the desired format
-        """
+    def transform_conversation_sharegpt(self, input_data, TAG, base_url, system_message=None, skip_role = []):
         output_messages = []
         
         # Add system message if provided
@@ -138,16 +120,6 @@ class BaseEvaluator:
                 return content
 
     def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt') -> List[Dict]:
-        """
-        Load ShareGPT format dataset
-        
-        Args:
-            dataset_path: Path to the ShareGPT JSON file
-            image_base_path: Base path where images are stored
-            
-        Returns:
-            List of conversation dictionaries
-        """
         assert(dataset_type == 'sharegpt')
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
         system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
@@ -158,9 +130,9 @@ class BaseEvaluator:
         processed_dataset = {'processed':[],'original': [], 'gt': []}
         for item in dataset:
             gt = self.get_gt_sharegpt(item, TAG.ASSISTANT_TAG, TAG)
-            original_item = self.transform_conversation(item, TAG, image_base_path, system_message = None)
+            original_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
 
-            processed_item = self.transform_conversation(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
+            processed_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
             processed_chat = self.processor.apply_chat_template(processed_item, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
 
             processed_dataset['original'].append(original_item)
@@ -172,16 +144,6 @@ class BaseEvaluator:
         return processed_dataset
     
     def generate_response(self, processed,max_length: int = 512, temperature = 0.7, top_p = 0.8) -> str:
-        """
-        Generate response from the model
-        
-        Args:
-            input_text: Input text (potentially with image)
-            max_length: Maximum generation length
-            
-        Returns:
-            Generated response
-        """
         input_length = processed['input_ids'].shape[1]
         # Generate
         with torch.no_grad():
@@ -203,17 +165,6 @@ class BaseEvaluator:
         return prompt, response
     
     def evaluate_dataset(self, dataset: List[Dict], save_results: bool = True, output_file: str = "evaluation_results.json") -> Dict:
-        """
-        Evaluate the model on the entire dataset
-        
-        Args:
-            dataset: ShareGPT format dataset
-            save_results: Whether to save results to file
-            output_file: Output file path for results
-            
-        Returns:
-            Evaluation results dictionary
-        """
         results = []
         
         print(f"Evaluating on {len(dataset)} samples...")
