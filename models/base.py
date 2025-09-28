@@ -69,7 +69,7 @@ class BaseEvaluator:
 
         print("Model loaded successfully!")
 
-    def transform_conversation(input_data, TAG, base_url, system_message=None, skip_role = []):
+    def transform_conversation(self, input_data, TAG, base_url, system_message=None, skip_role = []):
         """
         Transform conversation data from input format to desired output format.
         
