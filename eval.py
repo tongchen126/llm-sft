@@ -20,7 +20,7 @@ def main(model_path, dataset_path):
     evaluator = QwenVLEvaluator("Qwen/Qwen2.5-VL-7B-Instruct", args.model_path, args.device)
     
     # Load dataset
-    dataset = evaluator.load_sharegpt_dataset(args.dataset_path, args.image_base_path)
+    dataset = evaluator.load_dataset(args.dataset_path, args.image_base_path)
     
     # Limit samples if specified
     if args.max_samples:

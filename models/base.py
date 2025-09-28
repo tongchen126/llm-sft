@@ -137,7 +137,7 @@ class BaseEvaluator:
             if role == GT_ROLE:
                 return content
 
-    def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name = 'data.json') -> List[Dict]:
+    def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt') -> List[Dict]:
         """
         Load ShareGPT format dataset
         
@@ -148,6 +148,7 @@ class BaseEvaluator:
         Returns:
             List of conversation dictionaries
         """
+        assert(dataset_type == 'sharegpt')
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
         system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
         with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
