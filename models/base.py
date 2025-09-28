@@ -120,28 +120,32 @@ class BaseEvaluator:
                 return content
 
     def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt') -> List[Dict]:
-        assert(dataset_type == 'sharegpt')
-        TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
-        system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
-        with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
-            dataset = json.load(f)
-        
-        # Process dataset to handle image paths
-        processed_dataset = {'processed':[],'original': [], 'gt': []}
-        for item in dataset:
-            gt = self.get_gt_sharegpt(item, TAG.ASSISTANT_TAG, TAG)
-            original_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
-
-            processed_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
-            processed_chat = self.processor.apply_chat_template(processed_item, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
-
-            processed_dataset['original'].append(original_item)
-            processed_dataset['processed'].append(processed_chat)
-            processed_dataset['gt'].append(gt)
+        if (dataset_type == 'sharegpt'):
+            TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
+            system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
+            with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
+                dataset = json.load(f)
             
-        processed_dataset = LLMDataset(processed_dataset, ["processed","original","gt"])
+            # Process dataset to handle image paths
+            processed_dataset = {'processed':[],'original': [], 'gt': []}
+            for item in dataset:
+                gt = self.get_gt_sharegpt(item, TAG.ASSISTANT_TAG, TAG)
+                original_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
 
-        return processed_dataset
+                processed_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
+                processed_chat = self.processor.apply_chat_template(processed_item, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
+
+                processed_dataset['original'].append(original_item)
+                processed_dataset['processed'].append(processed_chat)
+                processed_dataset['gt'].append(gt)
+                
+            processed_dataset = LLMDataset(processed_dataset, ["processed","original","gt"])
+
+            return processed_dataset
+        else:
+            processed_dataset = {'processed':[],'original': [], 'gt': []}
+            processed_dataset = LLMDataset(processed_dataset, ["processed","original","gt"])
+            return processed_dataset
     
     def generate_response(self, processed,max_length: int = 512, temperature = 0.7, top_p = 0.8) -> str:
         input_length = processed['input_ids'].shape[1]
