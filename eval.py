@@ -7,7 +7,8 @@ from models import QwenVLEvaluator
 
 def main(model_path, dataset_path):
     parser = argparse.ArgumentParser(description="Evaluate Qwen-VL model on ShareGPT dataset")
-    parser.add_argument("--model_path", type=str, default=model_path, help="Path to fine-tuned model")
+    parser.add_argument("--model_path", type=str, default=model_path, help="Path to base model")
+    parser.add_argument("--lora_path", type=str, default=None, help="Path to lora")
     parser.add_argument("--dataset_path", type=str, default=dataset_path, help="Path to ShareGPT JSON dataset")
     parser.add_argument("--image_base_path", type=str, default=dataset_path, help="Base path for images")
     parser.add_argument("--output_file", type=str, default="evaluation_results.json", help="Output file for results")
@@ -17,7 +18,7 @@ def main(model_path, dataset_path):
     args = parser.parse_args()
     
     # Initialize evaluator
-    evaluator = QwenVLEvaluator("Qwen/Qwen2.5-VL-7B-Instruct", args.model_path, args.device)
+    evaluator = QwenVLEvaluator(args.model_path, lora_path = args.lora_path, device = args.device)
     
     # Load dataset
     dataset = evaluator.load_dataset(args.dataset_path, args.image_base_path)
