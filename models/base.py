@@ -8,6 +8,22 @@ from pathlib import Path
 from torch.utils.data import Dataset
 from peft import PeftModel
 
+import nltk
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from nltk.translate.meteor_score import meteor_score
+from rouge_score import rouge_scorer
+from bert_score import score as bert_score
+from sentence_transformers import SentenceTransformer, util
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+
+# Download required NLTK data
+try:
+    nltk.data.find('wordnet')
+except LookupError:
+    nltk.download('wordnet')
+    nltk.download('omw-1.4')
+
 class TAGS:
     def __init__(self,IMAGE_TAG, MESSAGE_TAG, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
         self.IMAGE_TAG = IMAGE_TAG
@@ -119,7 +135,7 @@ class BaseEvaluator:
             if role == GT_ROLE:
                 return content
 
-    def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt') -> List[Dict]:
+    def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt', max_samples = None) -> List[Dict]:
         if (dataset_type == 'sharegpt'):
             TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
             system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
@@ -127,8 +143,10 @@ class BaseEvaluator:
                 dataset = json.load(f)
             
             # Process dataset to handle image paths
+            if max_samples is not None:
+                dataset = dataset[:max_samples]
             processed_dataset = {'processed':[],'original': [], 'gt': []}
-            for item in dataset:
+            for item in tqdm(dataset):
                 gt = self.get_gt_sharegpt(item, TAG.ASSISTANT_TAG, TAG)
                 original_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
 
@@ -206,6 +224,67 @@ class BaseEvaluator:
         }
         
         return {"results": results, "statistics": stats}
-    
-    def calculate_metrics(self, results: List[Dict]) -> Dict:
-        return 0
+
+    def evaluate_text_similarity(self, reference, prediction):
+        """
+        Evaluate text similarity using multiple metrics
+        """
+        results = {}
+        
+        # 1. BLEU Score (0-1, higher is better)
+        # Commonly used for machine translation, measures n-gram overlap
+        reference_tokens = reference.lower().split()
+        prediction_tokens = prediction.lower().split()
+        smoothing = SmoothingFunction().method1
+        
+        bleu1 = sentence_bleu([reference_tokens], prediction_tokens, 
+                            weights=(1, 0, 0, 0), smoothing_function=smoothing)
+        bleu2 = sentence_bleu([reference_tokens], prediction_tokens, 
+                            weights=(0.5, 0.5, 0, 0), smoothing_function=smoothing)
+        bleu4 = sentence_bleu([reference_tokens], prediction_tokens, 
+                            weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=smoothing)
+        
+        results['BLEU-1'] = bleu1
+        results['BLEU-2'] = bleu2
+        results['BLEU-4'] = bleu4
+        
+        # 2. METEOR Score (0-1, higher is better)
+        # Considers synonyms and stemming, more flexible than BLEU
+        meteor = meteor_score([reference_tokens], prediction_tokens)
+        results['METEOR'] = meteor
+        
+        # 3. ROUGE Score (0-1, higher is better)
+        # Measures recall-oriented overlap, commonly used for summarization
+        scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+        rouge_scores = scorer.score(reference, prediction)
+        
+        results['ROUGE-1-F'] = rouge_scores['rouge1'].fmeasure
+        results['ROUGE-2-F'] = rouge_scores['rouge2'].fmeasure
+        results['ROUGE-L-F'] = rouge_scores['rougeL'].fmeasure
+        
+        # 4. BERTScore (0-1, higher is better)
+        # Uses contextual embeddings, captures semantic similarity better
+        P, R, F1 = bert_score([prediction], [reference], lang='en', verbose=False)
+        results['BERTScore-F1'] = F1.item()
+        results['BERTScore-Precision'] = P.item()
+        results['BERTScore-Recall'] = R.item()
+        
+        # 5. Semantic Similarity using Sentence Transformers (0-1, higher is better)
+        # Direct semantic comparison using pre-trained models
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        embeddings = model.encode([reference, prediction])
+        semantic_sim = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+        results['Semantic-Similarity'] = semantic_sim
+        
+        return results
+
+    def calculate_metrics(self, results: List[Dict], use_metric = ['Semantic-Similarity', 'ROUGE-2-F', 'BLEU-2', 'METEOR']) -> Dict:
+        calculated_metrics = {key: [] for key in use_metric}
+        for result in tqdm(results):
+            pred = result['predicted']
+            gt = result['ground_truth']
+            metric = self.evaluate_text_similarity(gt, pred)
+            for key in use_metric:
+                calculated_metrics[key].append(metric[key])
+
+        return calculated_metrics
