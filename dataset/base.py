@@ -31,7 +31,7 @@ class LLMDataset(Dataset):
     def __getitem__(self, idx):
         return [self.data[key][idx] for key in self.keys]
 
-def transform_conversation_sharegpt(self, input_data, TAG, base_url, system_message=None, skip_role = []):
+def transform_conversation_sharegpt(input_data, TAG, base_url, system_message=None, skip_role = []):
     output_messages = []
     
     # Add system message if provided
@@ -81,14 +81,14 @@ def transform_conversation_sharegpt(self, input_data, TAG, base_url, system_mess
     
     return output_messages
 
-def get_gt_sharegpt(self, input_data, GT_ROLE, TAG):
+def get_gt_sharegpt(input_data, GT_ROLE, TAG):
     for message in input_data[TAG.MESSAGE_TAG]:
         role = message[TAG.ROLE_TAG]
         content = message[TAG.CONTENT_TAG]
         if role == GT_ROLE:
             return content
 
-def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt', max_samples = None) -> List[Dict]:
+def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt', max_samples = None) -> List[Dict]:
     if (dataset_type == 'sharegpt'):
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
         system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
@@ -100,11 +100,11 @@ def load_dataset(self, dataset_path: str, image_base_path: str = None, json_name
             dataset = dataset[:max_samples]
         processed_dataset = {'processed':[],'original': [], 'gt': []}
         for item in tqdm(dataset):
-            gt = self.get_gt_sharegpt(item, TAG.ASSISTANT_TAG, TAG)
-            original_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
+            gt = get_gt_sharegpt(item, TAG.ASSISTANT_TAG, TAG)
+            original_item = transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
 
-            processed_item = self.transform_conversation_sharegpt(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
-            processed_chat = self.processor.apply_chat_template(processed_item, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
+            processed_item = transform_conversation_sharegpt(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
+            processed_chat = processor.apply_chat_template(processed_item, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
 
             processed_dataset['original'].append(original_item)
             processed_dataset['processed'].append(processed_chat)

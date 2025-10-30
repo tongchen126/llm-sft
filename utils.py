@@ -5,6 +5,95 @@ from pathlib import Path
 from openai import OpenAI
 import base64
 from tqdm import tqdm
+import random
+from collections import defaultdict
+import matplotlib.pyplot as plt
+from collections import Counter
+
+from dataset import pokemon_get_label
+
+def plot_label_distribution(json_path, title="Label Distribution", save_path='distribution.png'):
+    """
+    Plot the distribution of labels showing how many labels have 1, 2, 3, etc. records.
+    
+    Args:
+        json_path: Path to JSON file containing list of records
+        title: Title for the plot (default: "Label Distribution")
+    
+    Returns:
+        dict: Distribution data (record_count -> number_of_labels)
+    """
+    # Load records from JSON file
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: File not found at {json_path}")
+        return {}
+    except json.JSONDecodeError:
+        print(f"Error: Invalid JSON format in {json_path}")
+        return {}
+    
+    if not records:
+        print("No records to plot")
+        return {}
+    
+    if not isinstance(records, list):
+        print("Error: JSON file must contain a list of records")
+        return {}
+    
+    # Count records per label
+    label_counts = Counter(record['label'] for record in records)
+    
+    # Count how many labels have each record count
+    # e.g., {1: 5, 2: 3, 3: 1} means 5 labels have 1 record, 3 labels have 2 records, etc.
+    distribution = Counter(label_counts.values())
+    
+    # Sort by record count for plotting
+    record_counts = sorted(distribution.keys())
+    label_frequencies = [distribution[count] for count in record_counts]
+    
+    # Create the plot
+    plt.figure(figsize=(10, 6))
+    plt.bar(record_counts, label_frequencies, color='steelblue', edgecolor='black', alpha=0.7)
+    
+    plt.xlabel('Number of Records per Label', fontsize=12)
+    plt.ylabel('Number of Labels', fontsize=12)
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.grid(axis='y', alpha=0.3, linestyle='--')
+    
+    # Add value labels on top of bars
+    for x, y in zip(record_counts, label_frequencies):
+        plt.text(x, y, str(y), ha='center', va='bottom', fontsize=10)
+    
+    # Add statistics text
+    total_labels = len(label_counts)
+    total_records = len(records)
+    avg_records = total_records / total_labels if total_labels > 0 else 0
+    
+    stats_text = f'Total Labels: {total_labels}\nTotal Records: {total_records}\nAvg Records/Label: {avg_records:.2f}'
+    plt.text(0.98, 0.97, stats_text, transform=plt.gca().transAxes,
+             fontsize=10, verticalalignment='top', horizontalalignment='right',
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    
+    plt.tight_layout()
+    plt.savefig(save_path)
+    
+    # Print summary
+    print(f"\n{'='*50}")
+    print(f"Label Distribution Summary - {json_path}")
+    print(f"{'='*50}")
+    print(f"Total unique labels: {total_labels}")
+    print(f"Total records: {total_records}")
+    print(f"Average records per label: {avg_records:.2f}")
+    print(f"Distribution:")
+    for count in record_counts:
+        num_labels = distribution[count]
+        percentage = (num_labels / total_labels) * 100
+        print(f"  {num_labels} label(s) with {count} record(s) ({percentage:.1f}%)")
+    print(f"{'='*50}\n")
+    
+    return dict(distribution)
 
 def image_to_base64(image_path):
        with open(image_path, "rb") as f:
@@ -104,7 +193,7 @@ def convert_to_cot(messages, image_paths, model="gpt-4o"):
        return new_messages
 
 def conv_role(from_str):
-    # dataset uses e.g. "human" and "gpt" in conversations -> map to sharegpt roles
+       # dataset uses e.g. "human" and "gpt" in conversations -> map to sharegpt roles
        m = from_str.lower()
        if m in ("human","user","human:"):
               return "user"
@@ -114,12 +203,93 @@ def conv_role(from_str):
               return "system"
        return "user"
 
-def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False):
+def split_train_eval(records, eval_ratio):
+       """
+       Split dataset into train and eval sets with no label leakage.
+
+       Args:
+              records: List of dicts, each containing a 'label' key
+              eval_ratio: Float between 0 and 1, proportion of data for eval set
+
+       Returns:
+              tuple: (train_records, eval_records)
+       """
+       if not 0 <= eval_ratio <= 1:
+              raise ValueError("eval_ratio must be between 0 and 1")
+
+       if not records:
+              return {'data.json': [], 'data_eval.json': []}
+
+       # Group records by label
+       label_to_records = defaultdict(list)
+       for record in records:
+              label = record['label']
+              label_to_records[label].append(record)
+
+       # Get all unique labels and shuffle them
+       labels = list(label_to_records.keys())
+       random.shuffle(labels)
+
+       # Calculate target number of eval records
+       total_records = len(records)
+       target_eval_count = int(total_records * eval_ratio)
+
+       # Assign labels to eval set until we reach target count
+       eval_labels = set()
+       eval_count = 0
+
+       for label in labels:
+              label_count = len(label_to_records[label])
+              if eval_count < target_eval_count:
+                     eval_labels.add(label)
+                     eval_count += label_count
+              else:
+                     break
+
+       # Split records based on label assignment
+       train_records = []
+       eval_records = []
+
+       for label, label_records in label_to_records.items():
+              if label in eval_labels:
+                     eval_records.extend(label_records)
+              else:
+                     train_records.extend(label_records)
+
+       # Shuffle the final datasets
+       random.shuffle(train_records)
+       random.shuffle(eval_records)
+
+       return {'data.json': train_records, 'data_eval.json': eval_records}
+
+def extract_label(record):
+       """
+       Extract the label from assistant message content.
+       Returns the text before the first colon in the assistant's message.
+
+       Args:
+              record: Dict containing 'messages' list with role and content
+              
+       Returns:
+              str: The label (text before first ':') or None if not found
+       """
+       # Get messages list
+       messages = record.get('messages', [])
+
+       # Find assistant message
+       for message in messages:
+              if message.get('role') == 'assistant':
+                     content = message.get('content', '')
+                     # Split by ':' and get first part
+                     return pokemon_get_label(content)
+
+       return None
+
+def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False, label_func = None, eval_ratio = 0.2):
        ds = load_dataset(data_name)["train"]  # or appropriate split
 
        out_dir = Path(out_path)
        image_default_dir = "images"
-       out_file = out_dir / "data.json"
        img_out_dir = out_dir / image_default_dir
        img_out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -145,11 +315,27 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                             img_urls.append(str(Path(image_default_dir) / f"{i}_{j}.png"))
               if to_cot:
                      messages = convert_to_cot(messages, [str(out_dir / i) for i in img_urls])
-              records.append({"id": i, "messages": messages, "images": img_urls})
+              cur_record = {"id": i, "messages": messages, "images": img_urls}
+              if label_func is not None:
+                     label = label_func(cur_record)
+                     if label is not None:
+                            cur_record['label'] = label
+                     else:
+                            continue
+              records.append(cur_record)
        # write json list
-       with open(out_file, "w", encoding="utf-8") as f:
-              json.dump(records, f, ensure_ascii=False, indent=2)
+       if label_func is not None:
+              data = split_train_eval(records, eval_ratio)
+              for key, val in data.items():
+                     with open(out_dir / key, "w", encoding="utf-8") as f:
+                            json.dump(val, f, ensure_ascii=False, indent=2)
+                            print("wrote ", out_dir / key)
+       else:
+              with open(out_dir / "data.json", "w", encoding="utf-8") as f:
+                     json.dump(records, f, ensure_ascii=False, indent=2)
+                     print("wrote ", out_dir / "data.json")
 
-       print("wrote", out_file)
-       
-conv_dataset(out_path="data/pokemon_cot", to_cot=True)
+out_path = "data/pokemon1/"
+conv_dataset(out_path=out_path, to_cot=False, label_func = extract_label)
+print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
+print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))

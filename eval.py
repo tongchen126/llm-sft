@@ -26,7 +26,7 @@ def main(model_path, dataset_path, load_json = None, output_file = "evaluation_r
     
     if args.load_json is None:
         # Load dataset
-        dataset = load_dataset(args.dataset_path, args.image_base_path,max_samples=args.max_samples)
+        dataset = load_dataset(evaluator.processor, args.dataset_path, args.image_base_path,max_samples=args.max_samples)
         
         # Evaluate
         evaluation_results = evaluator.evaluate_dataset(
@@ -54,5 +54,5 @@ def main(model_path, dataset_path, load_json = None, output_file = "evaluation_r
 
 if __name__ == "__main__":
     main('/workspace/user_code/workspace/LLaMA-Factory/saved/qwen2_5vl-7b/lora/sft-2/', 
-        '/workspace/user_code/workspace/llm-sft/data/pokemon', load_json = "tmp/evaluation_cot_1e-4_r16.json")
+        '/workspace/user_code/workspace/llm-sft/data/pokemon')
 
