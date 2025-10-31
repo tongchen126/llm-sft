@@ -5,7 +5,7 @@ def pokemon_get_label(content):
     elif "：" in content:
         label = content.split('：', 1)[0].strip()
         return label
-    return None
+    return ''
 
 def pokemon_construct_prompt(dataset):
     label_string = ', '.join([i['label'] for i in dataset])
