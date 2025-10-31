@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import os
 
-from dataset import pokemon_get_label
+from dataset import get_label
 
 def plot_label_distribution(json_path, title="Label Distribution", save_path='distribution.png'):
     """
@@ -364,7 +364,7 @@ def split_train_eval(records, eval_ratio):
 
        return {'data.json': train_records, 'data_eval.json': eval_records}
 
-def extract_label(record):
+def extract_label(dataset_name, record):
        """
        Extract the label from assistant message content.
        Returns the text before the first colon in the assistant's message.
@@ -383,11 +383,11 @@ def extract_label(record):
               if message.get('role') == 'assistant':
                      content = message.get('content', '')
                      # Split by ':' and get first part
-                     return pokemon_get_label(content)
+                     return get_label(dataset_name, content)
 
        return None
 
-def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False, label_func = None, eval_ratio = 0.1):
+def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False, eval_ratio = 0.1, dataset_name = None):
        ds = load_dataset(data_name)["train"]  # or appropriate split
 
        out_dir = Path(out_path)
@@ -418,15 +418,15 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
               if to_cot:
                      messages = convert_to_cot(messages, [str(out_dir / i) for i in img_urls])
               cur_record = {"id": i, "messages": messages, "images": img_urls}
-              if label_func is not None:
-                     label = label_func(cur_record)
+              if dataset_name is not None:
+                     label = extract_label(dataset_name, cur_record)
                      if label is not None:
                             cur_record['label'] = label
                      else:
                             continue
               records.append(cur_record)
        # write json list
-       if label_func is not None:
+       if dataset_name is not None:
               data = split_train_eval(records, eval_ratio)
               for key, val in data.items():
                      with open(out_dir / key, "w", encoding="utf-8") as f:
@@ -439,6 +439,6 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
 
 if __name__ == '__main__':
        out_path = "data/pokemon1/"
-       conv_dataset(out_path=out_path, to_cot=False, label_func = extract_label)
+       conv_dataset(out_path=out_path, to_cot=False, dataset_name = 'pokemon')
        print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
        print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))

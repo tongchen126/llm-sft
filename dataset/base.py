@@ -4,7 +4,7 @@ from typing import List, Dict
 from pathlib import Path
 from torch.utils.data import Dataset
 
-from .pokemon import pokemon_construct_prompt
+from .pokemon import pokemon_construct_prompt, pokemon_get_label
 
 class TAGS:
     def __init__(self,IMAGE_TAG, MESSAGE_TAG, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
@@ -126,3 +126,8 @@ def load_dataset(processor, dataset_path: str, image_base_path: str = None, json
         processed_dataset = {'processed':[],'original': [], 'gt': []}
         processed_dataset = LLMDataset(processed_dataset, ["processed","original","gt"])
         return processed_dataset
+
+def get_label(dataset_name, content):
+    if dataset_name == 'pokemon':
+        return pokemon_get_label(content)
+    raise Exception(f"{dataset_name} get_label not implemented.")
