@@ -25,11 +25,11 @@ except LookupError:
     nltk.download('omw-1.4')
 
 class BaseEvaluator:
-    def __init__(self, base_model, lora_path = None, device: str = "auto", base_model_class = AutoModelForImageTextToText):
+    def __init__(self, base_model, lora_path = None, device: str = "auto", base_model_class = AutoModelForImageTextToText, dataset_name = None):
         self.device = device
         self.model_path = base_model
         self.lora_path = lora_path
-
+        self.dataset_name = dataset_name
         # Load tokenizer and model
         print(f"Loading base model from {base_model}")
         self.tokenizer = AutoTokenizer.from_pretrained(
@@ -51,7 +51,7 @@ class BaseEvaluator:
 
         print("Model loaded successfully!")
     
-    def generate_response(self, processed,max_length: int = 512, temperature = 0.7, top_p = 0.8) -> str:
+    def generate_response(self, processed,max_length: int = 2048, temperature = 0.7, top_p = 0.8) -> str:
         input_length = processed['input_ids'].shape[1]
         # Generate
         with torch.no_grad():
@@ -90,7 +90,8 @@ class BaseEvaluator:
                     'predicted': predicted_response,
                 }
                 results.append(result)
-                print(f"Prompt:\t{prompt}\nResponse:\t{predicted_response}\n\nGround Truth:\t{ground_truth}\n")
+                #print(f"Prompt:\t{prompt}\nResponse:\t{predicted_response}\n\nGround Truth:\t{ground_truth}\n")
+                print(f"Response:\t{predicted_response}\n\nGround Truth:\t{ground_truth}\n")
             except Exception as e:
                 print(f"Error processing sample {idx}: {str(e)}")
                 continue

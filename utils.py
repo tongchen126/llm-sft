@@ -9,6 +9,7 @@ import random
 from collections import defaultdict
 import matplotlib.pyplot as plt
 from collections import Counter
+import os
 
 from dataset import pokemon_get_label
 
@@ -94,6 +95,107 @@ def plot_label_distribution(json_path, title="Label Distribution", save_path='di
     print(f"{'='*50}\n")
     
     return dict(distribution)
+
+def plot_losses_from_json(file_paths, names, output_path='loss_plot.png', 
+                          x_axis='step', figsize=(10, 6)):
+    """
+    Extract loss values from JSON files and create a plot.
+    
+    Parameters:
+    -----------
+    file_paths : list of str
+        List of paths to JSON files
+    names : list of str
+        List of names corresponding to each file path (for legend)
+    output_path : str
+        Path where the plot will be saved (default: 'loss_plot.png')
+    x_axis : str
+        What to use for x-axis: 'step' or 'epoch' (default: 'step')
+    figsize : tuple
+        Figure size (width, height) in inches
+    """
+    
+    if len(file_paths) != len(names):
+        raise ValueError("Number of file paths must match number of names")
+    
+    plt.figure(figsize=figsize)
+    
+    # Process each JSON file
+    for file_path, name in zip(file_paths, names):
+        # Read JSON file
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        
+        # Extract log history
+        log_history = data.get('log_history', [])
+        
+        # Extract x-axis values and losses
+        x_values = []
+        losses = []
+        
+        for entry in log_history:
+            if 'loss' in entry:  # Only include entries that have loss
+                x_values.append(entry.get(x_axis, 0))
+                losses.append(entry['loss'])
+        
+        # Plot the line
+        if x_values and losses:
+            plt.plot(x_values, losses, marker='o', label=name, linewidth=2, markersize=4)
+        else:
+            print(f"Warning: No loss data found in {file_path}")
+    
+    # Customize the plot
+    plt.xlabel(x_axis.capitalize(), fontsize=12)
+    plt.ylabel('Loss', fontsize=12)
+    plt.title('Training Loss Comparison', fontsize=14, fontweight='bold')
+    plt.legend(loc='best', fontsize=10)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    # Save the figure
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"Plot saved to {output_path}")
+    
+    # Optionally display the plot
+    # plt.show()
+    
+    plt.close()
+
+def list_directories(path):
+    """
+    List all directories in the given path.
+    
+    Args:
+        path (str): The path to search for directories
+        
+    Returns:
+        dict: A dictionary with directory names as keys and full paths as values
+    """
+    dir_dict = {}
+    
+    try:
+        # Check if the path exists
+        if not os.path.exists(path):
+            raise ValueError(f"Path does not exist: {path}")
+        
+        # Check if the path is a directory
+        if not os.path.isdir(path):
+            raise ValueError(f"Path is not a directory: {path}")
+        
+        # List all items in the directory
+        for item in os.listdir(path):
+            full_path = os.path.join(path, item)
+            
+            # Check if the item is a directory
+            if os.path.isdir(full_path):
+                dir_dict[item] = os.path.abspath(full_path)
+                
+    except PermissionError:
+        print(f"Permission denied: {path}")
+    except Exception as e:
+        print(f"Error: {e}")
+    
+    return dir_dict
 
 def image_to_base64(image_path):
        with open(image_path, "rb") as f:
@@ -285,7 +387,7 @@ def extract_label(record):
 
        return None
 
-def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False, label_func = None, eval_ratio = 0.2):
+def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False, label_func = None, eval_ratio = 0.1):
        ds = load_dataset(data_name)["train"]  # or appropriate split
 
        out_dir = Path(out_path)
@@ -335,7 +437,8 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                      json.dump(records, f, ensure_ascii=False, indent=2)
                      print("wrote ", out_dir / "data.json")
 
-out_path = "data/pokemon1/"
-conv_dataset(out_path=out_path, to_cot=False, label_func = extract_label)
-print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
-print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))
+if __name__ == '__main__':
+       out_path = "data/pokemon1/"
+       conv_dataset(out_path=out_path, to_cot=False, label_func = extract_label)
+       print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
+       print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))

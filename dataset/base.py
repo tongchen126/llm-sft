@@ -4,6 +4,8 @@ from typing import List, Dict
 from pathlib import Path
 from torch.utils.data import Dataset
 
+from .pokemon import pokemon_construct_prompt
+
 class TAGS:
     def __init__(self,IMAGE_TAG, MESSAGE_TAG, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
         self.IMAGE_TAG = IMAGE_TAG
@@ -88,13 +90,20 @@ def get_gt_sharegpt(input_data, GT_ROLE, TAG):
         if role == GT_ROLE:
             return content
 
-def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data.json', dataset_type = 'sharegpt', max_samples = None) -> List[Dict]:
+def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = 'pokemon') -> List[Dict]:
     if (dataset_type == 'sharegpt'):
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
-        system_message = "You are a helpful assistant. You answer user's question with a standard format: [Short Answer]: [Explanation]"
+
         with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
             dataset = json.load(f)
-        
+
+        system_message = "You are a helpful assistant. You answer user's question with a standard format,\
+                    which consists of a short answer, and an explanation, with a colon separate them (<answer>: <explanation>). A sample answer looks like this: \
+                    Egg: The image draws an egg as it has a round shape with light-yellow color."
+
+        if dataset_name == 'pokemon':
+            system_message = pokemon_construct_prompt(dataset)
+
         # Process dataset to handle image paths
         if max_samples is not None:
             dataset = dataset[:max_samples]

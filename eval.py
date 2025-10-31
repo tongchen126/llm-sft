@@ -7,6 +7,7 @@ import numpy as np
 
 from models import QwenVLEvaluator
 from dataset import load_dataset
+from utils import list_directories
 
 def main(model_path, dataset_path, load_json = None, output_file = "evaluation_results.json"):
     parser = argparse.ArgumentParser(description="Evaluate Qwen-VL model on ShareGPT dataset")
@@ -20,13 +21,13 @@ def main(model_path, dataset_path, load_json = None, output_file = "evaluation_r
     parser.add_argument("--load_json", type=str, default=load_json, help="Load json file")
 
     args = parser.parse_args()
-    
+    dataset_name = 'pokemon'
     # Initialize evaluator
-    evaluator = QwenVLEvaluator(args.model_path, lora_path = args.lora_path, device = args.device)
+    evaluator = QwenVLEvaluator(args.model_path, lora_path = args.lora_path, device = args.device, dataset_name = dataset_name)
     
     if args.load_json is None:
         # Load dataset
-        dataset = load_dataset(evaluator.processor, args.dataset_path, args.image_base_path,max_samples=args.max_samples)
+        dataset = load_dataset(evaluator.processor, args.dataset_path, args.image_base_path,max_samples=args.max_samples, dataset_name = dataset_name)
         
         # Evaluate
         evaluation_results = evaluator.evaluate_dataset(
@@ -51,8 +52,22 @@ def main(model_path, dataset_path, load_json = None, output_file = "evaluation_r
             # print(f"metrics: {metrics}")
             for key in metrics:
                 print(f"Metric {key} mean: {np.mean(metrics[key])}")
+            return metrics
 
 if __name__ == "__main__":
-    main('/workspace/user_code/workspace/LLaMA-Factory/saved/qwen2_5vl-7b/lora/sft-2/', 
-        '/workspace/user_code/workspace/llm-sft/data/pokemon')
+    model = 'qwen3vl-8b'
+    dir_dict = list_directories(os.path.join("../LLaMA-Factory/saved/", model))
+    output_metrics = {}
+    excluded_keys = ["sft-5-e5-r16-b1", "sft-1-e4-r8-b1"]
+    mode = 'generate'
+    for key, val in dir_dict.items():
+        if mode == 'generate':
+            if key in excluded_keys:
+                continue
+            main(val, '/workspace/user_code/workspace/llm-sft/data/pokemon1', output_file=os.path.join("tmp/", model + '-' + key+'.json'))
+        elif mode == 'eval':
+            metrics = main(val, '/workspace/user_code/workspace/llm-sft/data/pokemon1', load_json=os.path.join("tmp/", model + '-' + key+'.json'))
+            output_metrics[key] = metrics
+
+    print(output_metrics)
 
