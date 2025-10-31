@@ -90,6 +90,21 @@ def get_gt_sharegpt(input_data, GT_ROLE, TAG):
         if role == GT_ROLE:
             return content
 
+def construct_prompt(dataset_name, dataset = None):
+    system_message = "You are a helpful assistant. You answer user's question with a standard format,\
+                which consists of a short answer, and an explanation, with a colon separate them (<answer>: <explanation>). A sample answer looks like this: \
+                Egg: The image draws an egg as it has a round shape with light-yellow color."
+
+    if dataset_name == 'pokemon':
+        system_message = pokemon_construct_prompt(dataset)
+
+    return system_message
+
+def get_label(dataset_name, content):
+    if dataset_name == 'pokemon':
+        return pokemon_get_label(content)
+    raise Exception(f"{dataset_name} get_label not implemented.")
+
 def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = 'pokemon') -> List[Dict]:
     if (dataset_type == 'sharegpt'):
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
@@ -97,12 +112,7 @@ def load_dataset(processor, dataset_path: str, image_base_path: str = None, json
         with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
             dataset = json.load(f)
 
-        system_message = "You are a helpful assistant. You answer user's question with a standard format,\
-                    which consists of a short answer, and an explanation, with a colon separate them (<answer>: <explanation>). A sample answer looks like this: \
-                    Egg: The image draws an egg as it has a round shape with light-yellow color."
-
-        if dataset_name == 'pokemon':
-            system_message = pokemon_construct_prompt(dataset)
+        system_message = construct_prompt(dataset_name, dataset)
 
         # Process dataset to handle image paths
         if max_samples is not None:
@@ -126,8 +136,3 @@ def load_dataset(processor, dataset_path: str, image_base_path: str = None, json
         processed_dataset = {'processed':[],'original': [], 'gt': []}
         processed_dataset = LLMDataset(processed_dataset, ["processed","original","gt"])
         return processed_dataset
-
-def get_label(dataset_name, content):
-    if dataset_name == 'pokemon':
-        return pokemon_get_label(content)
-    raise Exception(f"{dataset_name} get_label not implemented.")
