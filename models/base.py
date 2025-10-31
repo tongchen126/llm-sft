@@ -49,6 +49,8 @@ class BaseEvaluator:
 
         self.processor = AutoProcessor.from_pretrained(base_model)
 
+        self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+        self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
         print("Model loaded successfully!")
     
     def generate_response(self, processed,max_length: int = 2048, temperature = 0.7, top_p = 0.8) -> str:
@@ -142,7 +144,7 @@ class BaseEvaluator:
         
         # 3. ROUGE Score (0-1, higher is better)
         # Measures recall-oriented overlap, commonly used for summarization
-        scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+        scorer = self.rouge_scorer
         rouge_scores = scorer.score(reference, prediction)
         
         results['ROUGE-1-F'] = rouge_scores['rouge1'].fmeasure
@@ -158,7 +160,7 @@ class BaseEvaluator:
         
         # 5. Semantic Similarity using Sentence Transformers (0-1, higher is better)
         # Direct semantic comparison using pre-trained models
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+        model = self.sentence_model
         embeddings = model.encode([reference, prediction])
         semantic_sim = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
         results['Semantic-Similarity'] = semantic_sim

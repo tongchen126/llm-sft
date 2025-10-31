@@ -105,7 +105,7 @@ def get_label(dataset_name, content):
         return pokemon_get_label(content)
     raise Exception(f"{dataset_name} get_label not implemented.")
 
-def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = 'pokemon') -> List[Dict]:
+def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:
     if (dataset_type == 'sharegpt'):
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
 
