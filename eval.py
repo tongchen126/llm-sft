@@ -7,7 +7,7 @@ import numpy as np
 
 from models import QwenVLEvaluator
 from dataset import load_dataset
-from utils import list_directories
+from utils import *
 
 def main(model_path, dataset_path, load_json = None, output_file = "evaluation_results.json"):
     parser = argparse.ArgumentParser(description="Evaluate Qwen-VL model on ShareGPT dataset")
@@ -49,25 +49,31 @@ def main(model_path, dataset_path, load_json = None, output_file = "evaluation_r
         with open(args.load_json, 'r') as f:
             results = json.load(f)
             metrics = evaluator.calculate_metrics(results)
+            predict_history = evaluator.get_predict_history()
             # print(f"metrics: {metrics}")
             for key in metrics:
                 print(f"Metric {key} mean: {np.mean(metrics[key])}")
-            return metrics
+            return metrics, predict_history
 
 if __name__ == "__main__":
     model = 'qwen3vl-8b'
+    data_dir = '/workspace/user_code/workspace_40172/llm-sft/data/pokemon1'
     dir_dict = list_directories(os.path.join("../LLaMA-Factory/saved/", model))
     output_metrics = {}
-    excluded_keys = ["sft-7-e4-full-b1", "sft-8-e5-full-b1"]
+    excluded_keys = [] # ["sft-7-e4-full-b1", "sft-8-e5-full-b1"]
     mode = 'eval'
     for key, val in dir_dict.items():
         if key in excluded_keys:
             continue
         if mode == 'generate':
-            main(val, '/workspace/user_code/workspace/llm-sft/data/pokemon1', output_file=os.path.join("tmp/", model + '-' + key+'.json'))
+            main(val, data_dir, output_file=os.path.join("tmp", model + '-' + key+'.json'))
         elif mode == 'eval':
-            metrics = main(val, '/workspace/user_code/workspace/llm-sft/data/pokemon1', load_json=os.path.join("tmp/", model + '-' + key+'.json'))
+            metrics, predict_history = main(val, data_dir, load_json=os.path.join("tmp", model + '-' + key+'.json'))
             output_metrics[key] = metrics
+            fig = plot_prediction_heatmap(predict_history['ground_truth'], predict_history['prediction'], annot=False)
+            fig.savefig(os.path.join("tmp", model + '-' + key+'.png'))
 
-    for key, val in output_metrics.items():
-        print(f"{key}:\n{val}\n")
+    if mode == 'eval':
+        df = save_model_performance_table(output_metrics, os.path.join('tmp', model + '_perf.html'), format='html')
+        plot_losses_from_json([os.path.join(val, 'trainer_state.json') for key, val in dir_dict.items()],
+                                list(dir_dict.keys()), os.path.join('tmp', model+'_loss.png'))

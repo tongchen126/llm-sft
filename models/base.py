@@ -176,4 +176,4 @@ class BaseEvaluator:
             for key in use_metric:
                 calculated_metrics[key].append(metric[key])
 
-        return calculated_metrics
+        return {key: np.mean(val) for key, val in calculated_metrics.items()}
