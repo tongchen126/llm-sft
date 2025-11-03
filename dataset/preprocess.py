@@ -227,15 +227,19 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                             img_path = img_out_dir / f"{i}_{j}.png"
                             im.save(img_path)
                             img_urls.append(str(Path(image_default_dir) / f"{i}_{j}.png"))
-              if to_cot:
-                     messages = convert_to_cot(messages, [str(out_dir / i) for i in img_urls], model = reasoning_model, dataset_name = dataset_name)
+
               cur_record = {"id": i, "messages": messages, "images": img_urls}
+
               if dataset_name is not None:
                      label = extract_label(dataset_name, cur_record)
                      if label is not None:
                             cur_record['label'] = label
                      else:
                             continue
+
+              if to_cot:
+                     cur_record["messages"] = convert_to_cot(cur_record["messages"], [str(out_dir / i) for i in img_urls], model = reasoning_model, dataset_name = dataset_name)
+
               records.append(cur_record)
        # write json list
        if dataset_name is not None:
