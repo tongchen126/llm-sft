@@ -58,16 +58,16 @@ if __name__ == "__main__":
     model = 'qwen3vl-8b'
     dir_dict = list_directories(os.path.join("../LLaMA-Factory/saved/", model))
     output_metrics = {}
-    excluded_keys = ["sft-5-e5-r16-b1", "sft-1-e4-r8-b1"]
-    mode = 'generate'
+    excluded_keys = ["sft-7-e4-full-b1", "sft-8-e5-full-b1"]
+    mode = 'eval'
     for key, val in dir_dict.items():
+        if key in excluded_keys:
+            continue
         if mode == 'generate':
-            if key in excluded_keys:
-                continue
             main(val, '/workspace/user_code/workspace/llm-sft/data/pokemon1', output_file=os.path.join("tmp/", model + '-' + key+'.json'))
         elif mode == 'eval':
             metrics = main(val, '/workspace/user_code/workspace/llm-sft/data/pokemon1', load_json=os.path.join("tmp/", model + '-' + key+'.json'))
             output_metrics[key] = metrics
 
-    print(output_metrics)
-
+    for key, val in output_metrics.items():
+        print(f"{key}:\n{val}\n")
