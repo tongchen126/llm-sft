@@ -4,7 +4,7 @@ from typing import List, Dict
 from pathlib import Path
 from torch.utils.data import Dataset
 
-from .pokemon import pokemon_construct_prompt, pokemon_get_label
+from .pokemon import PokemonHelper
 
 class TAGS:
     def __init__(self,IMAGE_TAG, MESSAGE_TAG, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
@@ -96,13 +96,13 @@ def construct_prompt(dataset_name, dataset = None):
                 Egg: The image draws an egg as it has a round shape with light-yellow color."
 
     if dataset_name == 'pokemon':
-        system_message = pokemon_construct_prompt(dataset)
+        system_message = PokemonHelper.construct_prompt(dataset)
 
     return system_message
 
 def get_label(dataset_name, content):
     if dataset_name == 'pokemon':
-        return pokemon_get_label(content)
+        return PokemonHelper.get_label(content)
     raise Exception(f"{dataset_name} get_label not implemented.")
 
 def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:

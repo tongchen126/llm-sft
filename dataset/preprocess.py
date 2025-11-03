@@ -61,17 +61,17 @@ def gpt_api(model,system=None,user=None,image_path=None,messages=None):
 def get_role_message(messages,role):
        return [msg for msg in messages if msg["role"] == role]
 
-def convert_to_cot(messages, image_paths, model="gpt-4o"):
+def convert_to_cot(messages, image_paths, model="gpt-4o", dataset_name = None):
        """
        Convert a user → assistant pair into a chain-of-thought format.
        If images exist, they will be base64-encoded and sent to GPT-4o.
        """
-       system_prompt = \
+       api_system_prompt = \
        """You are a helpful annotator. You are presented with the dialog between a user and an assistant.
        Rewrite the assistant's answer to include explicit reasoning steps. Use the following format: 
-       <reasoning> [Step by step reasoning...] </reasoning> <final>[Concise final answer]</final>
+       <reasoning> [Step by step reasoning...] </reasoning> <final>[The short answer]</final> <explanation>[Explain the short answer]</explanation>
        """
-       result_system_prompt = """You are a helpful reasoning assistant. Always think step by step before answering. Format your response as: <reasoning> [step by step reasoning...] </reasoning> <final> [concise final answer only] </final> """
+       result_system_prompt = """You are a helpful reasoning assistant. Always think step by step before answering. Use the following format:  <reasoning> [Step by step reasoning...] </reasoning> <final>[The short answer]</final> <explanation>[Explain the short answer]</explanation>"""
        user_msg = get_role_message(messages,"user")[0]["content"]
        assistant_msg = get_role_message(messages,"assistant")[0]["content"]
 
@@ -93,7 +93,7 @@ def convert_to_cot(messages, image_paths, model="gpt-4o"):
        })
 
        messages=[
-              {"role": "system", "content": system_prompt},
+              {"role": "system", "content": api_system_prompt},
               {"role": "user", "content": user_content}
        ]
        reply = gpt_api(model=model,messages=messages)
@@ -199,7 +199,7 @@ def extract_label(dataset_name, record):
 
        return None
 
-def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False, eval_ratio = 0.1, dataset_name = None):
+def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt4o-captions",message_name="conversations",to_cot=False, eval_ratio = 0.1, dataset_name = None, reasoning_model = 'gpt-4o'):
        ds = load_dataset(data_name)["train"]  # or appropriate split
 
        out_dir = Path(out_path)
@@ -228,7 +228,7 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                             im.save(img_path)
                             img_urls.append(str(Path(image_default_dir) / f"{i}_{j}.png"))
               if to_cot:
-                     messages = convert_to_cot(messages, [str(out_dir / i) for i in img_urls])
+                     messages = convert_to_cot(messages, [str(out_dir / i) for i in img_urls], model = reasoning_model, dataset_name = dataset_name)
               cur_record = {"id": i, "messages": messages, "images": img_urls}
               if dataset_name is not None:
                      label = extract_label(dataset_name, cur_record)
