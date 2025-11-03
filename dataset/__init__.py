@@ -1,1 +1,1 @@
-from .base import LLMDataset, load_dataset, get_label
+from .base import LLMDataset, load_dataset, get_label, preprocess_cot_prompt

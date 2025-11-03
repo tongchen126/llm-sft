@@ -24,11 +24,11 @@ class PokemonHelper:
     def preprocess_cot_prompt():
         sample_answer = \
         """A sample answer is:
-        <reasoning> First, identify the creature in the image as a Bulbasaur from the Pokémon franchise.
+        <thinking> First, identify the creature in the image as a Bulbasaur from the Pokémon franchise.
         Then, observe its size and body structure, noticing it is small and quadrupedal.
         Next, examine its color and physical features, noting its blue-green body and dark patches.
         Now, look at its eyes, recognizing the sharp, triangular shape with red irises. Observe the large plant bulb on its back, recognizing it as thick and green.
-        Finally, notice additional details like pointed, stubby legs with claws and ear-like protrusions. </reasoning>
+        Finally, notice additional details like pointed, stubby legs with claws and ear-like protrusions. </thinking>
 
         <label>Bulbasaur</label>
 
@@ -43,14 +43,14 @@ class PokemonHelper:
         You first give explicit reasoning steps,
         then followed by a label, which is the shortest answer, then followed by explanation. 
         You answer with the following format:
-        <reasoning> [Step by step reasoning...] </reasoning>
+        <thinking> [Step by step reasoning...] </thinking>
         <label>[The short answer]</label> <explanation>[Explain the short answer]</explanation>.""" + sample_answer
 
         result_system_prompt = """You are a helpful reasoning assistant. Always think step by step before answering. 
         You first give explicit reasoning steps,
         then followed by a label, which is the shortest answer, then followed by explanation. 
         You answer with the following format:
-        <reasoning> [Step by step reasoning...] </reasoning>
+        <thinking> [Step by step reasoning...] </thinking>
         <label>[The short answer]</label> <explanation>[Explain the short answer]</explanation>.""" + sample_answer
 
         return api_system_prompt, result_system_prompt

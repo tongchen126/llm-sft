@@ -7,7 +7,7 @@ from tqdm import tqdm
 import random
 from collections import defaultdict
 
-from base import get_label, preprocess_cot_prompt
+from dataset import get_label, preprocess_cot_prompt
 
 def image_to_base64(image_path):
        with open(image_path, "rb") as f:
@@ -268,4 +268,4 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
 
 if __name__ == '__main__':
        out_path = "data/pokemon1_cot/"
-       conv_dataset(out_path=out_path, to_cot=True, dataset_name = 'pokemon')
+       conv_dataset(out_path=out_path, to_cot=True, dataset_name = 'pokemon',reasoning_model='qwen3-vl-235b-a22b-thinking')
