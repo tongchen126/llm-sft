@@ -14,7 +14,7 @@ def image_to_base64(image_path):
               image_base64 = base64.b64encode(f.read()).decode("utf-8")
        return image_base64
 
-def gpt_api(model,system=None,user=None,image_path=None,messages=None):
+def gpt_api(model,system=None,user=None,image_path=None,messages=None, retry_times = 3):
        token = "irk4CnzkwB6dCF8VOOBxI2V3@2700"
        url = "http://v2.open.venus.oa.com/llmproxy"
 
@@ -50,10 +50,18 @@ def gpt_api(model,system=None,user=None,image_path=None,messages=None):
               api_key=token
        )
 
-       response = client.chat.completions.create(
-              model=model,
-              messages=messages,
-       )
+       while True:
+              try:
+                     retry_times = retry_times - 1
+                     response = client.chat.completions.create(
+                            model=model,
+                            messages=messages,
+                     )
+                     break
+              except Exception as e:
+                     if retry_times <= 0:
+                            raise e
+                     pass
 
        reply = response.choices[0].message.content
        return reply
@@ -251,7 +259,11 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                             continue
 
               if to_cot:
-                     cur_record["messages"] = convert_to_cot(cur_record["messages"], [str(out_dir / i) for i in img_urls], model = reasoning_model, dataset_name = dataset_name)
+                     try:
+                            cur_record["messages"] = convert_to_cot(cur_record["messages"], [str(out_dir / i) for i in img_urls], model = reasoning_model, dataset_name = dataset_name)
+                     except Exception as e:
+                            e.print()
+                            continue
 
               records.append(cur_record)
        # write json list
