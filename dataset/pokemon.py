@@ -19,3 +19,38 @@ class PokemonHelper:
             system_message = system_message + label_string
 
         return system_message
+    
+    @staticmethod
+    def preprocess_cot_prompt():
+        sample_answer = \
+        """A sample answer is:
+        <reasoning> First, identify the creature in the image as a Bulbasaur from the Pokémon franchise.
+        Then, observe its size and body structure, noticing it is small and quadrupedal.
+        Next, examine its color and physical features, noting its blue-green body and dark patches.
+        Now, look at its eyes, recognizing the sharp, triangular shape with red irises. Observe the large plant bulb on its back, recognizing it as thick and green.
+        Finally, notice additional details like pointed, stubby legs with claws and ear-like protrusions. </reasoning>
+
+        <label>Bulbasaur</label>
+
+        <explanation>A small, quadruped creature with a blue-green body, sharp triangular eyes with red irises, and noticeable dark patches on its skin.
+        It has a plant bulb on its back, which is thick and green, signifying its Grass/Poison typing.
+        The bulb is prominent and resembles a small cabbage or plant bud. The creature has pointed, stubby legs with claws and an ear-like protrusion on each side of its head.
+        This description matches Bulbasaur.</explanation>
+        """
+        api_system_prompt = \
+        """You are a helpful annotator. You are presented with the dialog between a user and an assistant.
+        Rewrite the assistant's answer to include explicit reasoning steps. 
+        You first give explicit reasoning steps,
+        then followed by a label, which is the shortest answer, then followed by explanation. 
+        You answer with the following format:
+        <reasoning> [Step by step reasoning...] </reasoning>
+        <label>[The short answer]</label> <explanation>[Explain the short answer]</explanation>.""" + sample_answer
+
+        result_system_prompt = """You are a helpful reasoning assistant. Always think step by step before answering. 
+        You first give explicit reasoning steps,
+        then followed by a label, which is the shortest answer, then followed by explanation. 
+        You answer with the following format:
+        <reasoning> [Step by step reasoning...] </reasoning>
+        <label>[The short answer]</label> <explanation>[Explain the short answer]</explanation>.""" + sample_answer
+
+        return api_system_prompt, result_system_prompt

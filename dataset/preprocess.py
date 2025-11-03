@@ -7,7 +7,7 @@ from tqdm import tqdm
 import random
 from collections import defaultdict
 
-from .base import get_label
+from base import get_label, preprocess_cot_prompt
 
 def image_to_base64(image_path):
        with open(image_path, "rb") as f:
@@ -68,10 +68,23 @@ def convert_to_cot(messages, image_paths, model="gpt-4o", dataset_name = None):
        """
        api_system_prompt = \
        """You are a helpful annotator. You are presented with the dialog between a user and an assistant.
-       Rewrite the assistant's answer to include explicit reasoning steps. Use the following format: 
-       <reasoning> [Step by step reasoning...] </reasoning> <final>[The short answer]</final> <explanation>[Explain the short answer]</explanation>
-       """
-       result_system_prompt = """You are a helpful reasoning assistant. Always think step by step before answering. Use the following format:  <reasoning> [Step by step reasoning...] </reasoning> <final>[The short answer]</final> <explanation>[Explain the short answer]</explanation>"""
+       Rewrite the assistant's answer to include explicit reasoning steps. 
+       You first give explicit reasoning steps,
+       then followed by a label, which is the shortest answer, then followed by explanation. 
+       You answer with the following format:
+       <reasoning> [Step by step reasoning...] </reasoning>
+       <label>[The short answer]</label> <explanation>[Explain the short answer]</explanation>."""
+
+       result_system_prompt = """You are a helpful reasoning assistant. Always think step by step before answering. 
+       You first give explicit reasoning steps,
+       then followed by a label, which is the shortest answer, then followed by explanation. 
+       You answer with the following format:
+       <reasoning> [Step by step reasoning...] </reasoning>
+       <label>[The short answer]</label> <explanation>[Explain the short answer]</explanation>."""
+
+       if dataset_name is not None:
+              api_system_prompt, result_system_prompt = preprocess_cot_prompt(dataset_name)
+
        user_msg = get_role_message(messages,"user")[0]["content"]
        assistant_msg = get_role_message(messages,"assistant")[0]["content"]
 
@@ -254,5 +267,5 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                      print("wrote ", out_dir / "data.json")
 
 if __name__ == '__main__':
-       out_path = "data/pokemon1/"
-       conv_dataset(out_path=out_path, to_cot=False, dataset_name = 'pokemon')
+       out_path = "data/pokemon1_cot/"
+       conv_dataset(out_path=out_path, to_cot=True, dataset_name = 'pokemon')
