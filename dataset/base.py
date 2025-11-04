@@ -7,9 +7,9 @@ from torch.utils.data import Dataset
 from .pokemon import PokemonHelper
 
 class TAGS:
-    def __init__(self,IMAGE_TAG, MESSAGE_TAG, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
-        self.IMAGE_TAG = IMAGE_TAG
-        self.MESSAGE_TAG = MESSAGE_TAG
+    def __init__(self,IMAGE_KEY, MESSAGE_KEY, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
+        self.IMAGE_KEY = IMAGE_KEY
+        self.MESSAGE_KEY = MESSAGE_KEY
         self.ASSISTANT_TAG = ASSISTANT_TAG
         self.USER_TAG = USER_TAG
         self.SYSTEM_TAG = SYSTEM_TAG
@@ -44,7 +44,7 @@ def transform_conversation_sharegpt(input_data, TAG, base_url, system_message=No
         })
     
     # Process each message
-    for message in input_data[TAG.MESSAGE_TAG]:
+    for message in input_data[TAG.MESSAGE_KEY]:
         role = message[TAG.ROLE_TAG]
         content = message[TAG.CONTENT_TAG]
         if role in skip_role:
@@ -63,8 +63,8 @@ def transform_conversation_sharegpt(input_data, TAG, base_url, system_message=No
                 content_list.append({"type": "text", "text": part.strip()})
             
             # Add image if not the last part (meaning there was an <image> tag after this part)
-            if i < len(parts) - 1 and image_index < len(input_data["images"]):
-                image_path = input_data[TAG.IMAGE_TAG][image_index]
+            if i < len(parts) - 1 and image_index < len(input_data[TAG.IMAGE_KEY]):
+                image_path = input_data[TAG.IMAGE_KEY][image_index]
                 # Extract filename and create full URL
                 # filename = image_path.split("/")[-1]
                 image_url = str(Path(base_url, image_path))
@@ -83,11 +83,11 @@ def transform_conversation_sharegpt(input_data, TAG, base_url, system_message=No
     
     return output_messages
 
-def get_gt_sharegpt(input_data, GT_ROLE, TAG):
-    for message in input_data[TAG.MESSAGE_TAG]:
+def get_role_content(input_data, ROLE, TAG):
+    for message in input_data[TAG.MESSAGE_KEY]:
         role = message[TAG.ROLE_TAG]
         content = message[TAG.CONTENT_TAG]
-        if role == GT_ROLE:
+        if role == ROLE:
             return content
 
 def construct_prompt(dataset_name, dataset = None):
@@ -111,12 +111,17 @@ def get_label(dataset_name, content):
 def preprocess_cot_prompt(dataset_name):
     if dataset_name == 'pokemon':
         return PokemonHelper.preprocess_cot_prompt()
-    raise Exception(f"{dataset_name} get_label not implemented.")
+    raise Exception(f"{dataset_name} preprocess_cot_prompt not implemented.")
 
-def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:
+def get_tag(dataset_type):
     if (dataset_type == 'sharegpt'):
         TAG = TAGS('images', 'messages', "assistant", "user", "system", "role", "content", "<image>")
+        return TAG
+    raise Exception(f"{dataset_type} get_tag not implemented.")
 
+def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:
+    TAG = get_tag(dataset_type)
+    if (dataset_type == 'sharegpt'):
         with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
             dataset = json.load(f)
 
@@ -127,7 +132,7 @@ def load_dataset(processor, dataset_path: str, image_base_path: str = None, json
             dataset = dataset[:max_samples]
         processed_dataset = {'processed':[],'original': [], 'gt': []}
         for item in tqdm(dataset):
-            gt = get_gt_sharegpt(item, TAG.ASSISTANT_TAG, TAG)
+            gt = get_role_content(item, TAG.ASSISTANT_TAG, TAG)
             original_item = transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
 
             processed_item = transform_conversation_sharegpt(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])

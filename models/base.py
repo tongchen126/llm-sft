@@ -17,13 +17,6 @@ from sentence_transformers import SentenceTransformer, util
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-# Download required NLTK data
-try:
-    nltk.data.find('wordnet')
-except LookupError:
-    nltk.download('wordnet')
-    nltk.download('omw-1.4')
-
 class BaseEvaluator:
     def __init__(self, base_model, lora_path = None, device: str = "auto", base_model_class = AutoModelForImageTextToText, dataset_name = None):
         self.device = device
@@ -177,3 +170,11 @@ class BaseEvaluator:
                 calculated_metrics[key].append(metric[key])
 
         return {key: np.mean(val) for key, val in calculated_metrics.items()}
+
+if __name__ == '__main__':
+    # Download required NLTK data
+    try:
+        nltk.data.find('wordnet')
+    except LookupError:
+        nltk.download('wordnet')
+        nltk.download('omw-1.4')
