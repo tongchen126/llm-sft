@@ -2,17 +2,30 @@ import re
 
 class PokemonHelper:
     @staticmethod
+    def _split_str(content, split_str, index = 0):
+        if split_str in content:
+            return content.split(split_str, 1)[index].strip()
+        return content
+
+    @staticmethod
     def get_label(content):
-        if ':' in content:
-            label = content.split(':', 1)[0].strip()
-            return label
-        elif "：" in content:
-            label = content.split('：', 1)[0].strip()
-            return label
-        return ''
+        label = PokemonHelper._split_str(content, ':')
+        label = PokemonHelper._split_str(label, '：')
+        label = PokemonHelper._split_str(label, '.')
+        label = PokemonHelper._split_str(label, '。')
+        label = PokemonHelper._split_str(label, '(')
+        label = PokemonHelper._split_str(label, '（')
+        label = PokemonHelper._split_str(label, '只', 1)
+        label = PokemonHelper._split_str(label, '是', 1)
+        label = PokemonHelper._split_str(label, '的', 1)
+        label = PokemonHelper._split_str(label, 'is', 1)
+        if label == '':
+            return None
+        return label
+
     @staticmethod
     def construct_prompt(dataset = None):
-        sample_answer = "A sample answer is: \
+        sample_answer = " A sample answer is: \
                 Yamask: A ghostly, shadowy entity with a black body and red, slitted eyes that evoke an eerie aura."
         system_message = "You are a helpful assistant. You answer user's question with a standard format,\
                 which consists of a short answer, and an explanation, with a colon separate them (<answer>: <explanation>)." + sample_answer
@@ -26,7 +39,7 @@ class PokemonHelper:
     @staticmethod
     def preprocess_cot_prompt():
         sample_answer = \
-        """A sample answer is:
+        """ A sample answer is:
         <thinking> First, identify the creature in the image as a Bulbasaur from the Pokémon franchise.
         Then, observe its size and body structure, noticing it is small and quadrupedal.
         Next, examine its color and physical features, noting its blue-green body and dark patches.
@@ -68,7 +81,7 @@ class PokemonHelper:
     @staticmethod
     def construct_cot_prompt(dataset = None):
         sample_answer = \
-        """A sample answer is:
+        """ A sample answer is:
         <thinking> First, identify the creature in the image as a Bulbasaur from the Pokémon franchise.
         Then, observe its size and body structure, noticing it is small and quadrupedal.
         Next, examine its color and physical features, noting its blue-green body and dark patches.

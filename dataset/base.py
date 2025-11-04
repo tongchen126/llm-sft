@@ -34,8 +34,10 @@ class LLMDataset(Dataset):
         return [self.data[key][idx] for key in self.keys]
 
 def transform_conversation_sharegpt(input_data, TAG, base_url, system_message=None, skip_role = []):
+    # The TAG doesn't apply to output_messages, as it will be fed into the model processor,
+    # which means the output_messages should be compliant to the specific model processor.
     output_messages = []
-    
+
     # Add system message if provided
     if system_message:
         output_messages.append({
