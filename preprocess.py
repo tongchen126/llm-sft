@@ -262,7 +262,7 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                      try:
                             cur_record["messages"] = convert_to_cot(cur_record["messages"], [str(out_dir / i) for i in img_urls], model = reasoning_model, dataset_name = dataset_name)
                      except Exception as e:
-                            e.print()
+                            print(e)
                             continue
 
               records.append(cur_record)

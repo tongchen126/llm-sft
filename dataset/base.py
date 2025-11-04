@@ -97,12 +97,15 @@ def construct_prompt(dataset_name, dataset = None):
 
     if dataset_name == 'pokemon':
         system_message = PokemonHelper.construct_prompt(dataset)
-
+    elif dataset_name == 'pokemon_cot':
+        system_message = PokemonHelper.construct_cot_prompt(dataset)
     return system_message
 
 def get_label(dataset_name, content):
     if dataset_name == 'pokemon':
         return PokemonHelper.get_label(content)
+    elif dataset_name == 'pokemon_cot':
+        return PokemonHelper.get_cot_label(content)
     raise Exception(f"{dataset_name} get_label not implemented.")
 
 def preprocess_cot_prompt(dataset_name):
