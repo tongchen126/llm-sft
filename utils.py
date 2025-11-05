@@ -11,18 +11,15 @@ from sklearn.metrics import confusion_matrix
 from typing import List, Tuple, Optional
 import matplotlib
 import pandas as pd
+import matplotlib.font_manager as fm
 
-# Set at the matplotlib level
-matplotlib.rcParams['font.family'] = 'sans-serif'
-matplotlib.rcParams['font.sans-serif'] = ['SimHei']
-matplotlib.rcParams['axes.unicode_minus'] = False
-
-plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
-plt.rcParams["axes.unicode_minus"] = False 
-sns.set_style("darkgrid", {
-    'font.sans-serif': ['SimHei'],
-    'axes.unicode_minus': False
-})
+def is_font_available_insensitive(font_name):
+    """
+    Check if a font is available (case-insensitive).
+    """
+    available_fonts = [f.name.lower() for f in fm.fontManager.ttflist]
+    print(sorted(available_fonts))
+    return font_name.lower() in available_fonts
 
 def install_simhei_font():
     """
@@ -53,7 +50,7 @@ def install_simhei_font():
         # Step 4: Copy font file
         print(f"Copying {source_font} to {dest_font}")
         shutil.copy2(source_font, dest_font)
-        
+
         # Step 5: Execute fc-cache -fv
         print("Refreshing font cache...")
         result = subprocess.run(
@@ -63,10 +60,20 @@ def install_simhei_font():
             check=True
         )
         print(result.stdout)
-        
+
+        cache_dir = matplotlib.get_cachedir()
+        print(f"Cache directory: {cache_dir}")
+
+        # Remove the entire cache directory
+        if os.path.exists(cache_dir):
+            shutil.rmtree(cache_dir)
+            print(f"Cache directory removed: {cache_dir}")
+        else:
+            print("Cache directory does not exist")
+
         print("✓ Font installed successfully!")
         return True
-        
+
     except Exception as e:
         print(f"✗ Error: {e}")
         return False
@@ -310,7 +317,7 @@ def list_directories(path):
             raise ValueError(f"Path is not a directory: {path}")
         
         # List all items in the directory
-        for item in os.listdir(path):
+        for item in sorted(os.listdir(path)):
             full_path = os.path.join(path, item)
             
             # Check if the item is a directory
@@ -547,7 +554,24 @@ def save_model_performance_table(model_dict, output_path='model_performance.html
     
     return df
 
-if __name__ == '__main__':
-    out_path = "data/pokemon1/"
-    print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
-    print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))
+# Set at the matplotlib level
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['font.sans-serif'] = ['SimHei']
+matplotlib.rcParams['axes.unicode_minus'] = False
+
+plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
+plt.rcParams["axes.unicode_minus"] = False
+sns.set_style("darkgrid", {
+    'font.sans-serif': ['SimHei'],
+    'axes.unicode_minus': False
+})
+if not is_font_available_insensitive("SimHei"):
+    print("SimHei not available, installing...")
+    install_simhei_font()
+    print("Please restart program after installing the font...")
+    exit(0)
+
+#if __name__ == '__main__':
+    #out_path = "data/pokemon1/"
+    #print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
+    #print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))

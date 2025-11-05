@@ -121,10 +121,10 @@ def get_tag(dataset_type):
         return TAG
     raise Exception(f"{dataset_type} get_tag not implemented.")
 
-def load_dataset(processor, dataset_path: str, image_base_path: str = None, json_name = 'data_eval.json', dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:
+def load_dataset(processor, dataset_path: str, image_base_path: str = None, dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:
     TAG = get_tag(dataset_type)
     if (dataset_type == 'sharegpt'):
-        with open(str(Path(dataset_path, json_name)), 'r', encoding='utf-8') as f:
+        with open(str(Path(dataset_path)), 'r', encoding='utf-8') as f:
             dataset = json.load(f)
 
         system_message = construct_prompt(dataset_name, dataset)
