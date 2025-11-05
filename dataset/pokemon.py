@@ -19,20 +19,24 @@ class PokemonHelper:
         label = PokemonHelper._split_str(label, '是', 1)
         label = PokemonHelper._split_str(label, '的', 1)
         label = PokemonHelper._split_str(label, 'is', 1)
-        if label == '':
-            return None
+        label = PokemonHelper._split_str(label, 'is', 1)
+
         return label
 
     @staticmethod
     def construct_prompt(dataset = None):
         sample_answer = " A sample answer is: \
                 Yamask: A ghostly, shadowy entity with a black body and red, slitted eyes that evoke an eerie aura."
-        system_message = "You are a helpful assistant. You answer user's question with a standard format,\
-                which consists of a short answer, and an explanation, with a colon separate them (<answer>: <explanation>)." + sample_answer
+        system_message = "You are a helpful assistant that answers which pokemon is it in the image provided by the user. \
+                You answer in the same language as the user. \
+                You answer user's question in a standard format,\
+                which consists of a short answer to which pokemon is it, and an explanation, with a colon separating them (<which pokemon>: <explanation>)."
 
         if dataset is not None:
-            label_string = " All the possible answers include: " + ', '.join([i['label'] for i in dataset])
+            label_string = " All the possible pokemons that may occur are: " + ', '.join([i['label'] for i in dataset])
             system_message = system_message + label_string
+
+#        system_message = system_message + sample_answer
 
         return system_message
     
@@ -108,3 +112,47 @@ class PokemonHelper:
             system_message = system_message + label_string
 
         return system_message
+
+
+class PokemonLabelHelper:
+    @staticmethod
+    def get_label(content):
+        label = PokemonHelper._split_str(content, ':')
+        label = PokemonHelper._split_str(label, '：')
+        label = PokemonHelper._split_str(label, '.')
+        label = PokemonHelper._split_str(label, '。')
+        label = PokemonHelper._split_str(label, '(')
+        label = PokemonHelper._split_str(label, '（')
+        label = PokemonHelper._split_str(label, '只', 1)
+        label = PokemonHelper._split_str(label, '是', 1)
+        label = PokemonHelper._split_str(label, '的', 1)
+        label = PokemonHelper._split_str(label, 'is', 1)
+        label = PokemonHelper._split_str(label, 'is', 1)
+
+        return label
+
+    @staticmethod
+    def construct_prompt(dataset = None):
+        system_message = "You are a helpful assistant that answers which pokemon is it in the image provided by the user. \
+                You answer in the same language as the user. \
+                You answer user's question of which pokemon is it in the image, and you just answer the name of the pokemon, \
+                without any other explanation."
+
+        if dataset is not None:
+            label_string = " All the possible pokemons that may occur are: " + ', '.join([i['label'] for i in dataset])
+            system_message = system_message + label_string
+
+#        system_message = system_message + sample_answer
+
+        return system_message
+
+    def preprocess_record_hook(TAG, record, cot):
+        assert(not cot)
+        messages = record.get(TAG.MESSAGE_KEY, [])
+
+        for message in messages:
+            if message.get(TAG.ROLE_TAG) == TAG.ASSISTANT_TAG:
+                content = message.get(TAG.CONTENT_TAG, '')
+                message[TAG.CONTENT_TAG] = PokemonLabelHelper.get_label(content)
+
+        return record

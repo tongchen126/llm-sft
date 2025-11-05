@@ -9,7 +9,7 @@ from collections import defaultdict
 import os
 import time
 
-from dataset import get_label, preprocess_cot_prompt, get_tag
+from dataset import get_label, preprocess_cot_prompt, get_tag, preprocess_record_hook
 from utils import plot_label_distribution
 
 def image_to_base64(image_path):
@@ -288,7 +288,7 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
                      except Exception as e:
                             print(e)
                             continue
-
+              cur_record = preprocess_record_hook(dataset_name, TAG, cur_record, to_cot)
               records.append(cur_record)
 
        with open(out_dir / "data_all.json", "w", encoding="utf-8") as f:
@@ -296,8 +296,8 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
               print("wrote ", out_dir / "data_all.json")
 
 if __name__ == '__main__':
-       out_path = "data/pokemon1_cot/"
-       conv_dataset(out_path=out_path, to_cot=True, dataset_name = 'pokemon',reasoning_model='qwen3-vl-235b-a22b-instruct')
+       out_path = "data/pokemon_label/"
+       conv_dataset(out_path=out_path, to_cot=False, dataset_name = 'pokemon_label',reasoning_model='qwen3-vl-235b-a22b-instruct')
 
        # write json list
        data = split_train_eval(os.path.join(out_path, 'data_all.json'), 0.1)

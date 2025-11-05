@@ -4,7 +4,7 @@ from typing import List, Dict
 from pathlib import Path
 from torch.utils.data import Dataset
 
-from .pokemon import PokemonHelper
+from .pokemon import PokemonHelper, PokemonLabelHelper
 
 class TAGS:
     def __init__(self,IMAGE_KEY, MESSAGE_KEY, ASSISTANT_TAG, USER_TAG, SYSTEM_TAG, ROLE_TAG, CONTENT_TAG, IMAGE_LABEL=''):
@@ -101,6 +101,8 @@ def construct_prompt(dataset_name, dataset = None):
         system_message = PokemonHelper.construct_prompt(dataset)
     elif dataset_name == 'pokemon_cot':
         system_message = PokemonHelper.construct_cot_prompt(dataset)
+    elif dataset_name == 'pokemon_label':
+        system_message = PokemonLabelHelper.construct_prompt(dataset)
     return system_message
 
 def get_label(dataset_name, content):
@@ -108,12 +110,19 @@ def get_label(dataset_name, content):
         return PokemonHelper.get_label(content)
     elif dataset_name == 'pokemon_cot':
         return PokemonHelper.get_cot_label(content)
+    elif dataset_name == 'pokemon_label':
+        return PokemonLabelHelper.get_label(content)
     raise Exception(f"{dataset_name} get_label not implemented.")
 
 def preprocess_cot_prompt(dataset_name):
     if dataset_name == 'pokemon':
         return PokemonHelper.preprocess_cot_prompt()
     raise Exception(f"{dataset_name} preprocess_cot_prompt not implemented.")
+
+def preprocess_record_hook(dataset_name, TAG, record, cot):
+    if dataset_name == 'pokemon_label':
+        return PokemonLabelHelper.preprocess_record_hook(TAG, record, cot)
+    return record
 
 def get_tag(dataset_type):
     if (dataset_type == 'sharegpt'):

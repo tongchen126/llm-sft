@@ -171,10 +171,9 @@ class BaseEvaluator:
 
         return {key: np.mean(val) for key, val in calculated_metrics.items()}
 
-if __name__ == '__main__':
-    # Download required NLTK data
-    try:
-        nltk.data.find('wordnet')
-    except LookupError:
-        nltk.download('wordnet')
-        nltk.download('omw-1.4')
+# Download required NLTK data
+try:
+    nltk.data.find('wordnet')
+except LookupError:
+    nltk.download('wordnet')
+    nltk.download('omw-1.4')
