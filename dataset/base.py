@@ -130,7 +130,7 @@ def get_tag(dataset_type):
         return TAG
     raise Exception(f"{dataset_type} get_tag not implemented.")
 
-def load_dataset(processor, dataset_path: str, image_base_path: str = None, dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:
+def load_dataset(dataset_path: str, image_base_path: str = None, dataset_type = 'sharegpt', max_samples = None, dataset_name = None) -> List[Dict]:
     TAG = get_tag(dataset_type)
     if (dataset_type == 'sharegpt'):
         with open(str(Path(dataset_path)), 'r', encoding='utf-8') as f:
@@ -147,10 +147,9 @@ def load_dataset(processor, dataset_path: str, image_base_path: str = None, data
             original_item = transform_conversation_sharegpt(item, TAG, image_base_path, system_message = None)
 
             processed_item = transform_conversation_sharegpt(item, TAG, image_base_path, system_message = system_message, skip_role = [TAG.ASSISTANT_TAG])
-            processed_chat = processor.apply_chat_template(processed_item, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
 
             processed_dataset['original'].append(original_item)
-            processed_dataset['processed'].append(processed_chat)
+            processed_dataset['processed'].append(processed_item)
             processed_dataset['gt'].append(gt)
             
         processed_dataset = LLMDataset(processed_dataset, ["processed","original","gt"])

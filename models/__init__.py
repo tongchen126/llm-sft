@@ -1,1 +1,1 @@
-from .qwen2_5vl import QwenVLEvaluator
+from .qwenvl import QwenVLEvaluator

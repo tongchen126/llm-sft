@@ -75,7 +75,11 @@ class BaseEvaluator:
         for idx, item in enumerate(tqdm(dataset, desc="Evaluating")):
             try:
                 # Extract conversation and image path
-                processed, original, ground_truth = item
+                processed_item, original, ground_truth = item
+
+                processed = self.processor.apply_chat_template(processed_item,
+                                add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
+
                 # Generate prediction
                 prompt, predicted_response = self.generate_response(processed)
                 
