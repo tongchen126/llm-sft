@@ -56,51 +56,52 @@ def main(model_path, dataset_path, image_base_path, load_json = None, output_fil
             return metrics, predict_history
 
 if __name__ == "__main__":
-    model_class = QwenVLEvaluator#, OnlineEvaluator
-    model = 'qwen3vl-30bA3b'
-    dataset_name = ('pokemon_label', 'pokemon_label', 'pokemon_label') #(dataset_name, dataset_dir(local), dataset_dir(Llama factory))
-    save_dir = f'tmp/{model}-label/' # save path
-    dataset_json = ['train_eval', 'eval']
-    data_dir = f'/workspace/user_code/workspace_40172/llm-sft/data/{dataset_name[1]}'
-    dir_dict = list_directories(os.path.join(f"../LLaMA-Factory/saved/{dataset_name[2]}/", model))
-    #dir_dict = {model: 'Qwen/Qwen3-VL-30B-A3B-Instruct'}
-    output_metrics = defaultdict(dict)
-    excluded_keys = [] #"sft-1-e4-r8-b1"], "sft-2-e5-r8-b1", "sft-3-e3-r8-b1"] # ["sft-7-e4-full-b1", "sft-8-e5-full-b1"]
-    os.makedirs(save_dir, exist_ok = True)
+    for model_dir in ['pokemon_label_epoch3', 'pokemon_label_epoch6', 'pokemon_label_epoch8']:
+        model_class = QwenVLEvaluator#, OnlineEvaluator
+        model = 'qwen3vl-32b'
+        dataset_name = ('pokemon_label', 'pokemon_label', model_dir) #(dataset_name, dataset_dir(local), dataset_dir(Llama factory))
+        save_dir = f'tmp/{model}-{dataset_name[2]}/' # save path
+        dataset_json = ['train_eval', 'eval']
+        data_dir = f'/workspace/user_code/workspace_40172/llm-sft/data/{dataset_name[1]}'
+        dir_dict = list_directories(os.path.join(f"../LLaMA-Factory/saved/{dataset_name[2]}/", model))
+        #dir_dict = {model: 'Qwen/Qwen3-VL-30B-A3B-Instruct'}
+        output_metrics = defaultdict(dict)
+        excluded_keys = [] #"sft-1-e4-r8-b1"], "sft-2-e5-r8-b1", "sft-3-e3-r8-b1"] # ["sft-7-e4-full-b1", "sft-8-e5-full-b1"]
+        os.makedirs(save_dir, exist_ok = True)
 
-    mode = 'gen+eval' #['generate', 'eval', 'gen+eval']:
-    for key, val in dir_dict.items():
-        if key in excluded_keys:
-            continue
+        mode = 'gen+eval' #['generate', 'eval', 'gen+eval']:
+        for key, val in dir_dict.items():
+            if key in excluded_keys:
+                continue
 
-        if mode == 'generate' or mode == 'gen+eval':
-            for data_name in dataset_json:
-                json_file_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.json')
-                data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
+            if mode == 'generate' or mode == 'gen+eval':
+                for data_name in dataset_json:
+                    json_file_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.json')
+                    data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
 
-                main(val, data_json_path,
-                    data_dir, output_file=json_file_path,
-                    dataset_name=dataset_name[0], model_class = model_class)
+                    main(val, data_json_path,
+                        data_dir, output_file=json_file_path,
+                        dataset_name=dataset_name[0], model_class = model_class)
+
+            if mode == 'eval' or mode == 'gen+eval':
+                for data_name in dataset_json:
+                    json_file_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.json')
+                    data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
+                    fig_save_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.png')
+
+                    metrics, predict_history = main(val, data_json_path,
+                                                data_dir, load_json=json_file_path,
+                                                dataset_name=dataset_name[0], model_class = model_class)
+
+                    fig = plot_prediction_heatmap(predict_history['ground_truth'], predict_history['prediction'], annot=False)
+                    fig.savefig(fig_save_path)
+
+                    output_metrics[data_name][key] = metrics
+                    print(f"{save_dir}, {data_name}, {key}:\n{metrics}")
 
         if mode == 'eval' or mode == 'gen+eval':
-            for data_name in dataset_json:
-                json_file_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.json')
-                data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
-                fig_save_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.png')
+            for key, val in output_metrics.items():
+                df = save_model_performance_table(val, os.path.join(save_dir, model + f'_{key}_perf.html'), format='html')
 
-                metrics, predict_history = main(val, data_json_path,
-                                            data_dir, load_json=json_file_path,
-                                            dataset_name=dataset_name[0], model_class = model_class)
-
-                fig = plot_prediction_heatmap(predict_history['ground_truth'], predict_history['prediction'], annot=False)
-                fig.savefig(fig_save_path)
-
-                output_metrics[data_name][key] = metrics
-                print(f"{save_dir}, {data_name}, {key}:\n{metrics}")
-
-    if mode == 'eval' or mode == 'gen+eval':
-        for key, val in output_metrics.items():
-            df = save_model_performance_table(val, os.path.join(save_dir, model + f'_{key}_perf.html'), format='html')
-
-        plot_losses_from_json([os.path.join(val, 'trainer_state.json') for key, val in dir_dict.items()],
-                            list(dir_dict.keys()), os.path.join(save_dir, model + '_loss.png'))
+            plot_losses_from_json([os.path.join(val, 'trainer_state.json') for key, val in dir_dict.items()],
+                                list(dir_dict.keys()), os.path.join(save_dir, model + '_loss.png'))

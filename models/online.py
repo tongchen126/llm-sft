@@ -10,56 +10,8 @@ from typing import List, Dict
 from rapidfuzz.distance import Levenshtein
 
 from .base import BaseEvaluator
-from dataset import get_label, get_tag
-
-def image_to_base64(image_path):
-    with open(image_path, "rb") as f:
-        image_base64 = base64.b64encode(f.read()).decode("utf-8")
-    return image_base64
-
-def gpt_api(
-    model, system=None, user=None, image_path=None, messages=None, retry_times=5
-):
-    token = "irk4CnzkwB6dCF8VOOBxI2V3@2700"
-    url = "http://v2.open.venus.oa.com/llmproxy"
-
-    # 构建请求数据
-    if messages is None:
-        with open(image_path, "rb") as f:
-            image_base64 = base64.b64encode(f.read()).decode("utf-8")
-
-        messages = [
-            {"role": "system", "content": system},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": user},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{image_base64}"},
-                    },
-                ],
-            },
-        ]
-
-    client = OpenAI(base_url=url, api_key=token)
-
-    while True:
-        try:
-            retry_times = retry_times - 1
-            response = client.chat.completions.create(
-                model=model,
-                messages=messages,
-            )
-            break
-        except Exception as e:
-            if retry_times <= 0:
-                raise e
-            pass
-        time.sleep(2)
-
-    reply = response.choices[0].message.content
-    return reply
+from dataset import get_label
+from utils import gpt_api
 
 class OnlineEvaluator(BaseEvaluator):
     def __init__(self, base_model, dataset_name = None, **kwargs):
