@@ -37,8 +37,8 @@ def gpt_api(
             'history': list        # Updated conversation history
         }
     """
-    token = "irk4CnzkwB6dCF8VOOBxI2V3@2700"
-    url = "http://v2.open.venus.oa.com/llmproxy"
+    token = "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"
+    url = "https://openrouter.ai/api/v1"
 
     # Build messages
     if history is not None:
@@ -132,7 +132,44 @@ def save_base64_image(base64_string: str, output_path: str):
     with open(output_path, "wb") as f:
         f.write(image_data)
 
-def generate_multiple_images(keyword, model, save_dir, prompt='Please generate an image based on the keyword', repeat_num=10, save_start_index = 0):
+def get_next_image_index(output_dir, keyword):
+    """
+    Find the next available index for image naming by checking existing files.
+    
+    Args:
+        output_dir: Directory to check for existing images
+        keyword: Keyword used in filename pattern (keyword_<index>.png)
+        
+    Returns:
+        int: Next available index (largest existing index + 1, or 1 if no images exist)
+    """
+    import os
+    import re
+    
+    # Check if directory exists
+    if not os.path.exists(output_dir):
+        return 1
+    
+    # Get all files in the directory
+    files = os.listdir(output_dir)
+    
+    # Pattern to match: keyword_<number>.png
+    pattern = re.compile(rf"{re.escape(keyword)}_(\d+)\.png")
+    
+    max_index = 0
+    for filename in files:
+        match = pattern.match(filename)
+        if match:
+            index = int(match.group(1))
+            max_index = max(max_index, index)
+    
+    # Return next index (or 1 if no files found)
+    return max_index + 1 if max_index > 0 else 1
+
+def generate_multiple_images(keyword, model, save_dir, prompt = 'Please generate an image based on the keyword', 
+                            system = "You are a helpful image generation assistant. You will generate image based on the user input, \
+                                even if it's only a single word, you will still draw an image.", 
+                            repeat_num=10):
     """
     Generate multiple images based on a keyword and save them to disk.
     
@@ -142,7 +179,6 @@ def generate_multiple_images(keyword, model, save_dir, prompt='Please generate a
         save_dir: Base directory to save images
         prompt: Prompt template for image generation
         repeat_num: Number of images to generate
-        save_start_index: the index that saved images begin, suitable for continuing previous generation. 
     """
     import os
     import requests
@@ -153,17 +189,20 @@ def generate_multiple_images(keyword, model, save_dir, prompt='Please generate a
     print(f"Output directory: {output_dir}")
     
     # Generate images
-    success_count = 0
-    for i in range(repeat_num):
+    while True:
+        next_index = get_next_image_index(output_dir, keyword)
+        if next_index > repeat_num:
+            break
         try:
             # Combine prompt with keyword
             full_prompt = f"{prompt}: {keyword}"
             
-            print(f"Generating image {i+1}/{repeat_num}...")
+            print(f"Generating image {next_index}...")
             
             # Call GPT API to generate image
             result = gpt_api(
                 model=model,
+                system=system,
                 user=full_prompt
             )
             
@@ -172,7 +211,7 @@ def generate_multiple_images(keyword, model, save_dir, prompt='Please generate a
                 image_data = result['images'][0]
                 
                 # Determine output path
-                output_path = os.path.join(output_dir, f"{keyword}_{i + save_start_index}.png")
+                output_path = os.path.join(output_dir, f"{keyword}_{next_index}.png")
                 
                 # Check if it's a base64 string or URL
                 if image_data.startswith('http://') or image_data.startswith('https://'):
@@ -185,23 +224,20 @@ def generate_multiple_images(keyword, model, save_dir, prompt='Please generate a
                     # Save base64 image
                     save_base64_image(image_data, output_path)
                 
-                print(f"✓ Successfully saved image {i+1}/{repeat_num} to {output_path}")
-                success_count += 1
+                print(f"✓ Successfully saved image {next_index} to {output_path}")
             else:
-                print(f"✗ Warning: No image generated for iteration {i+1}")
+                print(f"✗ Warning: No image generated for iteration {next_index}, {result['text']}")
                 
         except Exception as e:
-            print(f"✗ Error generating image {i+1}/{repeat_num}: {str(e)}")
+            print(f"✗ Error generating image {next_index}: {str(e)}")
             continue
         
         # Add small delay to avoid rate limiting
-        if i < repeat_num - 1:
-            time.sleep(1)
+        time.sleep(1)
     
     print(f"\n{'='*60}")
-    print(f"Completed: {success_count}/{repeat_num} images successfully generated")
-    print(f"Location: {output_dir}")
-    print(f"{'='*60}")
+    print(f"Completed: {next_index - 1}/{repeat_num} images in {output_dir}")
+    print(f"{'='*60}\n")
     
     return output_dir
 
@@ -209,14 +245,16 @@ def generate_multiple_images(keyword, model, save_dir, prompt='Please generate a
 # Main execution
 # ============================================
 if __name__ == "__main__":
+    # Available models are listed on https://openrouter.ai/models
     # Demo: generate multiple image given keyword and save to 'tmp/'
+    models_supporting_image_output = ['openai/gpt-5-image', "google/gemini-2.5-flash-image", 'openai/gpt-5-image-mini']
     for keyword in ['喜欢','开心','快乐','期待','高兴','痛苦']:
-        generate_multiple_images(keyword, "gemini-2.5-flash-image", 'output_dir', \
-                        prompt='Please generate an image based on the following keyword', repeat_num=3)
+        generate_multiple_images(keyword, 'openai/gpt-5-image', 'output_dir', \
+                        prompt='Please generate an image based on the following keyword', repeat_num=1)
 
     # Demo: simple chat.
     response = gpt_api(
-        model="gpt-5-chat",
+        model="openai/gpt-5-chat",
         system="You are an image analysis assistant.",
         user="What's the result of 8 * 8 + 5?",
     )
@@ -224,7 +262,7 @@ if __name__ == "__main__":
 
     # Demo: chat with image input.
     response = gpt_api(
-        model="gpt-5-chat",
+        model="openai/gpt-5-chat",
         system="You are an image analysis assistant.",
         user="Describe this image in detail.",
         image_path="input.jpg"  # Replace with actual path
@@ -233,7 +271,7 @@ if __name__ == "__main__":
 
     # Demo: chat with history conversation.
     response = gpt_api(
-        model="gpt-5-chat",
+        model="openai/gpt-5-chat",
         user="What else could you observe from it?",
         history=response['history']  # Pass the history from previous turn
     )
@@ -241,7 +279,7 @@ if __name__ == "__main__":
 
     # Demo: ask GPT to generate image and save it.
     response = gpt_api(
-        model="gemini-2.5-flash-image",  # Or nano-banana, gpt5, etc.
+        model="google/gemini-2.5-flash-image",  # Or nano-banana, gpt5, etc.
         user="Generate an image of a cute robot cat"
     )
     print(f"{response['text']}")
