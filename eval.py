@@ -6,11 +6,11 @@ import json
 import numpy as np
 from collections import defaultdict
 
-from models import QwenVLEvaluator
+from models import QwenVLEvaluator, OnlineEvaluator
 from dataset import load_dataset
 from utils import *
 
-def main(model_path, dataset_path, image_base_path, load_json = None, output_file = "evaluation_results.json", dataset_name = 'pokemon'):
+def main(model_path, dataset_path, image_base_path, load_json = None, output_file = "evaluation_results.json", dataset_name = 'pokemon', model_class = None):
     parser = argparse.ArgumentParser(description="Evaluate Qwen-VL model on ShareGPT dataset")
     parser.add_argument("--model_path", type=str, default=model_path, help="Path to base model")
     parser.add_argument("--lora_path", type=str, default=None, help="Path to lora")
@@ -23,7 +23,7 @@ def main(model_path, dataset_path, image_base_path, load_json = None, output_fil
 
     args = parser.parse_args()
     # Initialize evaluator
-    evaluator = QwenVLEvaluator(args.model_path, lora_path = args.lora_path, device = args.device, dataset_name = dataset_name)
+    evaluator = model_class(args.model_path, lora_path = args.lora_path, device = args.device, dataset_name = dataset_name)
     
     if args.load_json is None:
         # Load dataset
@@ -56,6 +56,7 @@ def main(model_path, dataset_path, image_base_path, load_json = None, output_fil
             return metrics, predict_history
 
 if __name__ == "__main__":
+    model_class = QwenVLEvaluator#, OnlineEvaluator
     model = 'qwen3vl-30bA3b'
     dataset_name = ('pokemon_label', 'pokemon_label', 'pokemon_label') #(dataset_name, dataset_dir(local), dataset_dir(Llama factory))
     save_dir = f'tmp/{model}-label/' # save path
@@ -71,21 +72,35 @@ if __name__ == "__main__":
     for key, val in dir_dict.items():
         if key in excluded_keys:
             continue
+
         if mode == 'generate' or mode == 'gen+eval':
             for data_name in dataset_json:
-                main(val, os.path.join(data_dir, f'data_{data_name}.json'), data_dir, output_file=os.path.join(save_dir, model + '-' + key + f'_{data_name}.json'),
-                    dataset_name=dataset_name[0])
+                json_file_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.json')
+                data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
+
+                main(val, data_json_path,
+                    data_dir, output_file=json_file_path,
+                    dataset_name=dataset_name[0], model_class = model_class)
+
         if mode == 'eval' or mode == 'gen+eval':
             for data_name in dataset_json:
-                metrics, predict_history = main(val, os.path.join(data_dir, f'data_{data_name}.json'), data_dir,
-                                            load_json=os.path.join(save_dir, model + '-' + key + f'_{data_name}.json'), dataset_name=dataset_name[0])
+                json_file_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.json')
+                data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
+                fig_save_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.png')
+
+                metrics, predict_history = main(val, data_json_path,
+                                            data_dir, load_json=json_file_path,
+                                            dataset_name=dataset_name[0], model_class = model_class)
+
+                fig = plot_prediction_heatmap(predict_history['ground_truth'], predict_history['prediction'], annot=False)
+                fig.savefig(fig_save_path)
+
                 output_metrics[data_name][key] = metrics
                 print(f"{save_dir}, {data_name}, {key}:\n{metrics}")
-                fig = plot_prediction_heatmap(predict_history['ground_truth'], predict_history['prediction'], annot=False)
-                fig.savefig(os.path.join(save_dir, model + '-' + key + f'_{data_name}.png'))
 
     if mode == 'eval' or mode == 'gen+eval':
         for key, val in output_metrics.items():
             df = save_model_performance_table(val, os.path.join(save_dir, model + f'_{key}_perf.html'), format='html')
+
         plot_losses_from_json([os.path.join(val, 'trainer_state.json') for key, val in dir_dict.items()],
-                                list(dir_dict.keys()), os.path.join(save_dir, model + '_loss.png'))
+                            list(dir_dict.keys()), os.path.join(save_dir, model + '_loss.png'))

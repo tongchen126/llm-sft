@@ -47,6 +47,8 @@ class BaseEvaluator:
         print("Model loaded successfully!")
     
     def generate_response(self, processed,max_length: int = 2048, temperature = 0.7, top_p = 0.8) -> str:
+        processed = self.processor.apply_chat_template(processed,
+                    add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
         input_length = processed['input_ids'].shape[1]
         # Generate
         with torch.no_grad():
@@ -75,10 +77,7 @@ class BaseEvaluator:
         for idx, item in enumerate(tqdm(dataset, desc="Evaluating")):
             try:
                 # Extract conversation and image path
-                processed_item, original, ground_truth = item
-
-                processed = self.processor.apply_chat_template(processed_item,
-                                add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
+                processed, original, ground_truth = item
 
                 # Generate prediction
                 prompt, predicted_response = self.generate_response(processed)
@@ -176,8 +175,9 @@ class BaseEvaluator:
         return {key: np.mean(val) for key, val in calculated_metrics.items()}
 
 # Download required NLTK data
-try:
-    nltk.data.find('wordnet')
-except LookupError:
-    nltk.download('wordnet')
-    nltk.download('omw-1.4')
+if __name__ == '__main__':
+    try:
+        nltk.data.find('wordnet')
+    except LookupError:
+        nltk.download('wordnet')
+        nltk.download('omw-1.4')

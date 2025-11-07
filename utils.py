@@ -208,8 +208,8 @@ def plot_label_distribution(json_path, title="Label Distribution", save_path='di
     
     stats_text = f'Total Labels: {total_labels}\nTotal Records: {total_records}\nAvg Records/Label: {avg_records:.2f}'
     plt.text(0.98, 0.97, stats_text, transform=plt.gca().transAxes,
-             fontsize=10, verticalalignment='top', horizontalalignment='right',
-             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+            fontsize=10, verticalalignment='top', horizontalalignment='right',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     
     plt.tight_layout()
     plt.savefig(save_path)
@@ -231,7 +231,7 @@ def plot_label_distribution(json_path, title="Label Distribution", save_path='di
     return dict(distribution)
 
 def plot_losses_from_json(file_paths, names, output_path='loss_plot.png', 
-                          x_axis='step', figsize=(10, 6)):
+                            x_axis='step', figsize=(10, 6)):
     """
     Extract loss values from JSON files and create a plot.
     
@@ -462,7 +462,7 @@ def plot_prediction_heatmap(
     return fig
 
 def save_model_performance_table(model_dict, output_path='model_performance.html', 
-                                  format='html', decimal_places=4):
+                                    format='html', decimal_places=4):
     """
     Create and save a table of model performance metrics with best values highlighted.
     
@@ -518,7 +518,7 @@ def save_model_performance_table(model_dict, output_path='model_performance.html
         
         # Define yellow fill and bold font
         yellow_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', 
-                                   fill_type='solid')
+                                    fill_type='solid')
         bold_font = Font(bold=True)
         
         # Find and highlight max values in each column
