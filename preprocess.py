@@ -1,74 +1,13 @@
 from datasets import load_dataset
 import json
 from pathlib import Path
-from openai import OpenAI
-import base64
 from tqdm import tqdm
 import random
 from collections import defaultdict
 import os
-import time
 
 from dataset import get_label, preprocess_cot_prompt, get_tag, preprocess_record_hook
-from utils import plot_label_distribution
-
-def image_to_base64(image_path):
-       with open(image_path, "rb") as f:
-              image_base64 = base64.b64encode(f.read()).decode("utf-8")
-       return image_base64
-
-def gpt_api(model,system=None,user=None,image_path=None,messages=None, retry_times = 5):
-       token = "irk4CnzkwB6dCF8VOOBxI2V3@2700"
-       url = "http://v2.open.venus.oa.com/llmproxy"
-
-       # 构建请求数据
-       if messages is None:
-              with open(image_path, "rb") as f:
-                     image_base64 = base64.b64encode(f.read()).decode("utf-8")
-
-              messages =  [
-                     {
-                            "role": "system",
-                            "content": system
-                     },
-                     {
-                            "role": "user",
-                            "content": [
-                            {
-                                   "type": "text", 
-                                   "text": user
-                            },
-                            {
-                                   "type": "image_url",
-                                   "image_url": {
-                                   "url": f"data:image/png;base64,{image_base64}"
-                                   }
-                            }
-                            ] 
-                     }
-              ]
-
-       client = OpenAI(
-              base_url=url,
-              api_key=token
-       )
-
-       while True:
-              try:
-                     retry_times = retry_times - 1
-                     response = client.chat.completions.create(
-                            model=model,
-                            messages=messages,
-                     )
-                     break
-              except Exception as e:
-                     if retry_times <= 0:
-                            raise e
-                     pass
-              time.sleep(2)
-
-       reply = response.choices[0].message.content
-       return reply
+from utils import plot_label_distribution, gpt_api
 
 def get_role_message(messages,role):
        return [msg for msg in messages if msg["role"] == role]

@@ -12,6 +12,61 @@ from typing import List, Tuple, Optional
 import matplotlib
 import pandas as pd
 import matplotlib.font_manager as fm
+from openai import OpenAI
+import base64
+import time
+
+def image_to_base64(image_path):
+    with open(image_path, "rb") as f:
+        image_base64 = base64.b64encode(f.read()).decode("utf-8")
+    return image_base64
+
+
+def gpt_api(
+    model, system=None, user=None, image_path=None, messages=None, retry_times=5
+):
+    token = "irk4CnzkwB6dCF8VOOBxI2V3@2700"
+    url = "http://v2.open.venus.oa.com/llmproxy"
+
+    # 构建请求数据
+    if messages is None:
+        with open(image_path, "rb") as f:
+            image_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+        messages = [
+            {"role": "system", "content": system},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{image_base64}"},
+                    },
+                ],
+            },
+        ]
+
+    client = OpenAI(base_url=url, api_key=token)
+
+    while True:
+        try:
+            retry_times = retry_times - 1
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+            )
+            break
+        except Exception as e:
+            pass
+
+        if retry_times <= 0:
+            raise Exception("Max retry reached...")
+
+        time.sleep(2)
+
+    reply = response.choices[0].message.content
+    return reply
 
 def is_font_available_insensitive(font_name):
     """
@@ -571,7 +626,7 @@ if not is_font_available_insensitive("SimHei"):
     print("Please restart program after installing the font...")
     exit(0)
 
-#if __name__ == '__main__':
-    #out_path = "data/pokemon1/"
-    #print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
-    #print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))
+# if __name__ == '__main__':
+# out_path = "data/pokemon1/"
+# print(plot_label_distribution(out_path + "data.json", save_path = out_path + "data.png"))
+# print(plot_label_distribution(out_path + "data_eval.json", save_path = out_path + "data_eval.png"))
