@@ -2,6 +2,9 @@ import base64
 import time
 from openai import OpenAI
 from typing import Optional, List, Dict, Union, Any
+import os
+os.environ["HTTP_PROXY"] = "http://192.168.10.192:7890"
+os.environ["HTTPS_PROXY"] = os.environ["HTTP_PROXY"]
 
 
 def image_to_base64(image_path: str) -> str:
@@ -37,7 +40,7 @@ def gpt_api(
             'history': list        # Updated conversation history
         }
     """
-    token = "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"
+    token = "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"
     url = "https://openrouter.ai/api/v1"
 
     # Build messages
@@ -100,11 +103,18 @@ def gpt_api(
     }
     
     # Extract content
-    if isinstance(message.content, str):
+    if hasattr(message, 'images') and isinstance(getattr(message,'images'), list):
+        assert(isinstance(message.content, str))
+        assert(isinstance(getattr(message,'images'), list))
+        message_tmp = [{'type':'text', 'text': message.content}, *getattr(message,'images')]
+        result['text'] = message.content
+        # Add assistant response to history
+        result['history'].append({"role": "assistant", "content": message_tmp})
+        result['images'].extend([item.get(item.get('type'), {}).get('url', '') for item in getattr(message,'images')])
+    elif isinstance(message.content, str):
         result['text'] = message.content
         # Add assistant response to history
         result['history'].append({"role": "assistant", "content": message.content})
-        
     elif isinstance(message.content, list):
         # Handle multimodal response
         text_parts = []
@@ -120,7 +130,6 @@ def gpt_api(
         result['history'].append({"role": "assistant", "content": message.content})
     
     return result
-
 
 def save_base64_image(base64_string: str, output_path: str):
     """Helper function to save base64 image to file"""
@@ -175,10 +184,10 @@ def generate_multiple_images(keyword, model, save_dir, prompt = 'Please generate
     
     Args:
         keyword: The keyword to base image generation on
-        model: Model name (e.g., "dall-e-3", "dall-e-2")
+        model: Model name
         save_dir: Base directory to save images
         prompt: Prompt template for image generation
-        repeat_num: Number of images to generate
+        repeat_num: Number of images to generate (including those already saved)
     """
     import os
     import requests
@@ -246,10 +255,11 @@ def generate_multiple_images(keyword, model, save_dir, prompt = 'Please generate
 # ============================================
 if __name__ == "__main__":
     # Available models are listed on https://openrouter.ai/models
+
     # Demo: generate multiple image given keyword and save to 'tmp/'
     models_supporting_image_output = ['openai/gpt-5-image', "google/gemini-2.5-flash-image", 'openai/gpt-5-image-mini']
     for keyword in ['喜欢','开心','快乐','期待','高兴','痛苦']:
-        generate_multiple_images(keyword, 'openai/gpt-5-image', 'output_dir', \
+        generate_multiple_images(keyword, 'google/gemini-2.5-flash-image', 'output_dir', \
                         prompt='Please generate an image based on the following keyword', repeat_num=1)
 
     # Demo: simple chat.
