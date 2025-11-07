@@ -176,9 +176,7 @@ def get_next_image_index(output_dir, keyword):
     return max_index + 1 if max_index > 0 else 1
 
 def generate_multiple_images(keyword, model, save_dir, prompt = 'Please generate an image based on the keyword', 
-                            system = "You are a helpful image generation assistant. You will generate image based on the user input, \
-                                even if it's only a single word, you will still draw an image.", 
-                            repeat_num=10):
+                            system = None, repeat_num=10):
     """
     Generate multiple images based on a keyword and save them to disk.
     
@@ -204,7 +202,7 @@ def generate_multiple_images(keyword, model, save_dir, prompt = 'Please generate
             break
         try:
             # Combine prompt with keyword
-            full_prompt = f"{prompt}: {keyword}"
+            full_prompt = f"{prompt}{keyword}"
             
             print(f"Generating image {next_index}...")
             
@@ -260,7 +258,7 @@ if __name__ == "__main__":
     models_supporting_image_output = ['openai/gpt-5-image', "google/gemini-2.5-flash-image", 'openai/gpt-5-image-mini']
     for keyword in ['喜欢','开心','快乐','期待','高兴','痛苦']:
         generate_multiple_images(keyword, 'google/gemini-2.5-flash-image', 'output_dir', \
-                        prompt='Please generate an image based on the following keyword', repeat_num=1)
+                        prompt='Please generate an image based on the following keyword: ', repeat_num=10)
 
     # Demo: simple chat.
     response = gpt_api(
