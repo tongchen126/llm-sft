@@ -7,7 +7,7 @@ from collections import defaultdict
 import os
 
 from dataset import get_label, preprocess_cot_prompt, get_tag, preprocess_record_hook
-from utils import plot_label_distribution, gpt_api
+from utils import plot_label_distribution, gpt_api, image_to_base64
 
 def get_role_message(messages,role):
        return [msg for msg in messages if msg["role"] == role]
@@ -217,6 +217,8 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
               if dataset_name is not None:
                      label = extract_label(dataset_name, cur_record, TAG)
                      if label is not None:
+                            if isinstance(label, list):
+                                   label = label[0] # Take the first label, the original ground truth.
                             cur_record['label'] = label
                      else:
                             continue
@@ -235,8 +237,8 @@ def conv_dataset(out_path = "data/pokemon",data_name = "llamafactory/pokemon-gpt
               print("wrote ", out_dir / "data_all.json")
 
 if __name__ == '__main__':
-       out_path = "data/pokemon_label/"
-       conv_dataset(out_path=out_path, to_cot=False, dataset_name = 'pokemon_label',reasoning_model='qwen3-vl-235b-a22b-instruct')
+       out_path = "data/pokemon1_cot2/"
+       conv_dataset(out_path=out_path, to_cot=True, dataset_name = 'pokemon',reasoning_model='gpt-5-chat')
 
        # write json list
        data = split_train_eval(os.path.join(out_path, 'data_all.json'), 0.1)
