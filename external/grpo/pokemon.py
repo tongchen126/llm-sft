@@ -5,10 +5,12 @@ from swift.plugin import ORM, orms
 from rapidfuzz.distance import Levenshtein
 
 def _cal_exact(prediction_label, reference_label):
-    diff = Levenshtein.distance(prediction_label, reference_label)
-    diff = (len(reference_label) - diff) if (len(reference_label) - diff) > 0 else 0
-    exact_metric = diff / len(reference_label)
-    return exact_metric
+    if len(reference_label) > 0:
+        diff = Levenshtein.distance(prediction_label, reference_label)
+        diff = (len(reference_label) - diff) if (len(reference_label) - diff) > 0 else 0
+        exact_metric = diff / len(reference_label)
+        return exact_metric
+    return 0
 
 def _get_cot_label(content):
     tag_to_find = 'label'
@@ -31,7 +33,9 @@ class PokemonGRPOAccuracy(ORM):
             answer = _get_cot_label(content)
             reward = _cal_exact(answer, sol)
             rewards.append(reward)
-            #print(f"{answer}:{sol}:{reward}")
+            #print(f"+++++++++++++++++++++++++++++++++++++++++++++++\n\
+            #    {content}\n\
+            #    {answer}:{sol}:{reward}\n++++++++++++++++++++++++++++++++++")
         return rewards
 
 orms['pokemon_grpo_acc'] = PokemonGRPOAccuracy
@@ -52,15 +56,16 @@ class PokemonGRPOFormat(ORM):
                 correct_count += 1
             
             # Check for <explanation> bracket
-            if re.search(r'<explanation>.*?</explanation>', content, re.DOTALL):
-                correct_count += 1
+            #if re.search(r'<explanation>.*?</explanation>', content, re.DOTALL):
+            #    correct_count += 1
             
             # Bonus: check if all three are present in correct order
-            full_pattern = r'<thinking>.*?</thinking>.*?<label>.*?</label>.*?<explanation>.*?</explanation>'
+            # full_pattern = r'<thinking>.*?</thinking>.*?<label>.*?</label>.*?<explanation>.*?</explanation>'
+            full_pattern = r'<thinking>.*?</thinking>.*?<label>.*?</label>'
             if re.search(full_pattern, content, re.DOTALL):
                 reward = 1.0  # Full reward for correct order
             else:
-                reward = correct_count / 3.0  # Partial reward
+                reward = correct_count / 2.0  # Partial reward
             #print(f"-----------------------------------------\n\
             #    {content}:\n{reward}\n------------------------------------\n")
             rewards.append(reward)
