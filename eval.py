@@ -10,10 +10,10 @@ from models import QwenVLEvaluator, OnlineEvaluator
 from dataset import load_dataset
 from utils import *
 
-def main(model_path, dataset_path, image_base_path, load_json = None, output_file = "evaluation_results.json", dataset_name = 'pokemon', model_class = None):
+def main(model_path, dataset_path, image_base_path, lora_path = None, load_json = None, output_file = "evaluation_results.json", dataset_name = 'pokemon', model_class = None):
     parser = argparse.ArgumentParser(description="Evaluate Qwen-VL model on ShareGPT dataset")
     parser.add_argument("--model_path", type=str, default=model_path, help="Path to base model")
-    parser.add_argument("--lora_path", type=str, default=None, help="Path to lora")
+    parser.add_argument("--lora_path", type=str, default=lora_path, help="Path to lora")
     parser.add_argument("--dataset_path", type=str, default=dataset_path, help="Path to ShareGPT JSON dataset")
     parser.add_argument("--image_base_path", type=str, default=image_base_path, help="Base path for images")
     parser.add_argument("--output_file", type=str, default=output_file, help="Output file for results")
@@ -56,20 +56,32 @@ def main(model_path, dataset_path, image_base_path, load_json = None, output_fil
             return metrics, predict_history
 
 if __name__ == "__main__":
-    for model_dir in ['pokemon_label_epoch3', 'pokemon_label_epoch6', 'pokemon_label_epoch8']:
-        model_class = QwenVLEvaluator#, OnlineEvaluator
-        model = 'qwen3vl-32b'
-        dataset_name = ('pokemon_label', 'pokemon_label', model_dir) #(dataset_name, dataset_dir(local), dataset_dir(Llama factory))
-        save_dir = f'tmp/{model}-{dataset_name[2]}/' # save path
+    model_class = QwenVLEvaluator # OnlineEvaluator
+    model_name = 'Qwen/Qwen3-VL-8B-Instruct'
+    framework = 'swift' # 'llama'
+    model_dir_list = ['pokemon_label_epoch6_sft']
+    dataset_name = ('pokemon_label', 'pokemon_label') # (dataset_name, dataset_dir(local))
+    mode = 'gen+eval' #['generate', 'eval', 'gen+eval']:
+    excluded_keys = [] #"sft-1-e4-r8-b1"], "sft-2-e5-r8-b1", "sft-3-e3-r8-b1"] # ["sft-7-e4-full-b1", "sft-8-e5-full-b1"]
+
+    for model_dir in model_dir_list:
+        model = model_name.split('/')[1]
+        save_dir = f'tmp/{model}-{model_dir}/' # save path
         dataset_json = ['train_eval', 'eval']
         data_dir = f'/workspace/user_code/workspace_40172/llm-sft/data/{dataset_name[1]}'
-        dir_dict = list_directories(os.path.join(f"../LLaMA-Factory/saved/{dataset_name[2]}/", model))
-        #dir_dict = {model: 'Qwen/Qwen3-VL-30B-A3B-Instruct'}
+
+        if framework == 'llama':
+            dir_dict = list_directories(os.path.join(f"../LLaMA-Factory/saved/{model_dir}/", model))
+        else:
+            dir_dict = list_directories(os.path.join(f"../ms-swift/saved/{model_dir}/", model), True)
+
+        if model_class == OnlineEvaluator:
+            dir_dict = {model: model_name}
+
         output_metrics = defaultdict(dict)
-        excluded_keys = [] #"sft-1-e4-r8-b1"], "sft-2-e5-r8-b1", "sft-3-e3-r8-b1"] # ["sft-7-e4-full-b1", "sft-8-e5-full-b1"]
+
         os.makedirs(save_dir, exist_ok = True)
 
-        mode = 'gen+eval' #['generate', 'eval', 'gen+eval']:
         for key, val in dir_dict.items():
             if key in excluded_keys:
                 continue
@@ -79,8 +91,8 @@ if __name__ == "__main__":
                     json_file_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.json')
                     data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
 
-                    main(val, data_json_path,
-                        data_dir, output_file=json_file_path,
+                    main(model_name, data_json_path,
+                        data_dir, lora_path = val, output_file=json_file_path,
                         dataset_name=dataset_name[0], model_class = model_class)
 
             if mode == 'eval' or mode == 'gen+eval':
@@ -89,8 +101,8 @@ if __name__ == "__main__":
                     data_json_path = os.path.join(data_dir, f'data_{data_name}.json')
                     fig_save_path = os.path.join(save_dir, model + '-' + key + f'_{data_name}.png')
 
-                    metrics, predict_history = main(val, data_json_path,
-                                                data_dir, load_json=json_file_path,
+                    metrics, predict_history = main(model_name, data_json_path,
+                                                data_dir, lora_path = val, load_json=json_file_path,
                                                 dataset_name=dataset_name[0], model_class = model_class)
 
                     fig = plot_prediction_heatmap(predict_history['ground_truth'], predict_history['prediction'], annot=False)

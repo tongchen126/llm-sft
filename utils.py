@@ -15,6 +15,8 @@ import matplotlib.font_manager as fm
 from openai import OpenAI
 import base64
 import time
+import re
+from pathlib import Path
 
 def image_to_base64(image_path):
     with open(image_path, "rb") as f:
@@ -350,7 +352,36 @@ def plot_losses_from_json(file_paths, names, output_path='loss_plot.png',
     
     plt.close()
 
-def list_directories(path):
+def get_sorted_dirs(path: str, pattern: Optional[str] = None) -> List[str]:
+    """
+    Get sorted list of directories from a given path.
+    
+    Args:
+        path: The directory path to search
+        pattern: Optional regex pattern to filter directories (e.g., 'checkpoint.*')
+    
+    Returns:
+        List of directory paths sorted by name
+    """
+    path_obj = Path(path)
+    
+    if not path_obj.exists() or not path_obj.is_dir():
+        return []
+    
+    # Get all directories
+    dirs = [d for d in path_obj.iterdir() if d.is_dir()]
+    
+    # Apply regex filter if pattern is provided
+    if pattern:
+        regex = re.compile(pattern)
+        dirs = [d for d in dirs if regex.match(d.name)]
+    
+    # Sort by name
+    dirs.sort(key=lambda x: x.name)
+    
+    return [str(d) for d in dirs]
+
+def list_directories(path, swift=False):
     """
     List all directories in the given path.
     
@@ -377,8 +408,13 @@ def list_directories(path):
             
             # Check if the item is a directory
             if os.path.isdir(full_path):
-                dir_dict[item] = os.path.abspath(full_path)
-                
+                abs_path = os.path.abspath(full_path)
+                if swift:
+                    last_checkpoint = get_sorted_dirs(get_sorted_dirs(full_path)[-1], 'checkpoint-')[-1]
+                    abs_path = os.path.abspath(last_checkpoint)
+
+                dir_dict[item] = abs_path
+
     except PermissionError:
         print(f"Permission denied: {path}")
     except Exception as e:

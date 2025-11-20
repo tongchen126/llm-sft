@@ -38,7 +38,7 @@ class BaseEvaluator:
         ).eval()
 
         if lora_path is not None:
-            self.model = PeftModel.from_pretrained(self.model, lora_path)
+            self.model = PeftModel.from_pretrained(self.model, lora_path).merge_and_unload()
 
         self.processor = AutoProcessor.from_pretrained(base_model)
 
